@@ -21,6 +21,7 @@ init {
 
             _uiState.emit(
                 ReviewsState.Loaded(reviews)
+                //ReviewsState.Error("the reviews did not load!")
             )
         }
     }
