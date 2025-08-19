@@ -1,5 +1,6 @@
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.plugin.mpp.apple.XCFramework
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -19,16 +20,21 @@ kotlin {
         }
     }
 
+    val xcf = XCFramework("Shared")
+
     listOf(
         iosX64(),
         iosArm64(),
         iosSimulatorArm64()
+
     ).forEach { iosTarget ->
         iosTarget.binaries.framework {
             baseName = "Shared"
+           xcf.add(this)
             isStatic = true
         }
     }
+
 
     sourceSets {
         androidMain.dependencies {
