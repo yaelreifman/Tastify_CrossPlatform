@@ -15,7 +15,7 @@ data class Review(
     var latitude: Double? = null,
     var longitude: Double? = null,
     var placeId: String? = null,
-    val createdAt: Long? = null
+    val createdAt: String = ""
 )
 
 data class Coordinates(

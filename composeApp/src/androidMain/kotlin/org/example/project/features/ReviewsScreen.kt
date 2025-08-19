@@ -100,7 +100,6 @@ fun ReviewsContent(
         }
     }
 
-    // פופ אפ להזנת ביקורת חדשה
     if (showDialog) {
         AddReviewDialog(
             onDismiss = { showDialog = false },
