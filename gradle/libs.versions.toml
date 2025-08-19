@@ -19,7 +19,9 @@ ktorClientCore = "3.0.1"
 lifecycleViewmodelAndroid = "2.9.1"
 benchmarkCommon = "1.4.0"
 lifecycleViewmodelKtx = "2.9.2"
+mapsCompose = "<latest>"
 material3 = "1.3.1"
+playServicesMaps = "<latest>"
 ui = "1.9.0"
 uiGraphics = "1.5.0"
 uiToolingPreview = "1.7.7"
@@ -56,6 +58,8 @@ ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktorCli
 ktor-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "ktorClientCore" }
 ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktorClientCore" }
 ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktorClientCore" }
+maps-compose = { module = "com.google.maps.android:maps-compose", version.ref = "mapsCompose" }
+play-services-maps = { module = "com.google.android.gms:play-services-maps", version.ref = "playServicesMaps" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
