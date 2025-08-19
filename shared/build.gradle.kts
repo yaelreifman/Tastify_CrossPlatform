@@ -5,7 +5,7 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
     id("co.touchlab.skie") version "0.10.1"
-
+    id("com.google.gms.google-services")
 }
 
 kotlin {
@@ -31,12 +31,16 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.androidx.lifecycle.viewmodel.ktx)
             implementation(libs.ktor.client.okhttp) // Android
+            implementation(project.dependencies.platform(libs.firebase.bom))
         }
         commonMain.dependencies {
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.content.negotiation)
             implementation(libs.ktor.serialization.kotlinx.json)
+            implementation("dev.gitlive:firebase-firestore:2.1.0")
+            implementation("dev.gitlive:firebase-common:2.1.0")
+            implementation("dev.gitlive:firebase-auth:2.1.0")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -61,4 +65,8 @@ android {
 }
 dependencies {
     implementation(libs.firebase.crashlytics.buildtools)
+    implementation("dev.gitlive:firebase-firestore:2.1.0")
+    implementation("dev.gitlive:firebase-common:2.1.0")
+    implementation("dev.gitlive:firebase-auth:2.1.0")
+
 }

@@ -60,6 +60,8 @@ ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "kto
 ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktorClientCore" }
 maps-compose = { module = "com.google.maps.android:maps-compose", version.ref = "mapsCompose" }
 play-services-maps = { module = "com.google.android.gms:play-services-maps", version.ref = "playServicesMaps" }
+firebase-bom = { module = "com.google.firebase:firebase-bom", version = "33.7.0" } # או הגרסה הכי עדכנית
+
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

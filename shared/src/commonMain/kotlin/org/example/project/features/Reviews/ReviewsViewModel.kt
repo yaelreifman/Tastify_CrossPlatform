@@ -1,51 +1,52 @@
 package org.example.project.features.Reviews
 
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import org.example.project.features.BaseViewModel
-import org.example.project.model.Review
 import org.example.project.model.Reviews
+import org.example.project.data.ReviewsRepository
+import org.example.project.data.FirebaseReviewsRepository
+import org.example.project.domain.EnrichReviewLocationUseCase
+import org.example.project.location.DummyRestaurantLocationDataSource
 
-class ReviewsViewModel:BaseViewModel() {
-private val _uiState: MutableStateFlow<ReviewsState> = MutableStateFlow(ReviewsState.Loading)
+
+
+class ReviewsViewModel(
+    private val repo: ReviewsRepository = FirebaseReviewsRepository(),
+    private val enrichLocation: EnrichReviewLocationUseCase =
+        EnrichReviewLocationUseCase(DummyRestaurantLocationDataSource())
+) : BaseViewModel() {
+
+    private val _uiState: MutableStateFlow<ReviewsState> =
+        MutableStateFlow(ReviewsState.Loading)
     val uiState: StateFlow<ReviewsState> get() = _uiState
-init {
-   fetchReviews()
-}
-    private fun fetchReviews(){
-        scope.launch {
-            val reviews = createMockReviewData()
-            delay(1500)
 
-            _uiState.emit(
-                ReviewsState.Loaded(reviews)
-                //ReviewsState.Error("the reviews did not load!")
-            )
+    init {
+        fetchReviews()
+    }
+
+    private fun fetchReviews() {
+        scope.launch {
+            repo.listenReviews()
+                .onStart { _uiState.value = ReviewsState.Loading }
+                // מעשירים קואורדינטות אם חסרות (lat/lng/placeId)
+                .map { reviews ->
+                    val enriched = reviews.items.map { review ->
+                        enrichLocation.enrich(review)
+                    }
+                    Reviews(enriched)
+                }
+                .catch { e ->
+                    _uiState.value = ReviewsState.Error(e.message ?: "Unknown error")
+                }
+                .collectLatest { reviews ->
+                    _uiState.value = ReviewsState.Loaded(reviews)
+                }
         }
     }
-}
-private fun createMockReviewData(): Reviews {
-    val reviewsList = listOf(
-        Review(
-            id = "123",
-            userId = "123",
-            restaurantId = "111",
-            rating = 5,
-            comment = "nice",
-            imagePath = "none",
-
-        ),
-        Review(
-            id = "423",
-            userId = "173",
-            restaurantId = "111",
-            rating = 5,
-            comment = "nice",
-            imagePath = "none",
-
-            )
-    )
-    return Reviews(items = reviewsList)
 }
