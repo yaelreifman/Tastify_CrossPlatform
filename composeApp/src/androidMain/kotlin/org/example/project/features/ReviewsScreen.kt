@@ -1,5 +1,6 @@
 package org.example.project.features
 
+import android.graphics.Bitmap
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -19,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -30,6 +32,8 @@ import org.example.project.features.Reviews.ReviewsState
 import org.example.project.features.Reviews.ReviewsViewModel
 import org.example.project.model.Review
 import org.example.project.model.Reviews
+import java.io.File
+import java.io.FileOutputStream
 
 @Composable
 fun ReviewsScreen(
@@ -185,10 +189,25 @@ fun AddReviewDialog(
     var uploading by remember { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
+    // בוחר תמונה מהגלריה
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? -> selectedImageUri = uri }
+
+    // מצלמה (תמונה חדשה)
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicturePreview()
+    ) { bitmap: Bitmap? ->
+        bitmap?.let {
+            val file = File(context.cacheDir, "captured_${System.currentTimeMillis()}.jpg")
+            FileOutputStream(file).use { out ->
+                it.compress(Bitmap.CompressFormat.JPEG, 100, out)
+            }
+            selectedImageUri = Uri.fromFile(file)
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -231,11 +250,20 @@ fun AddReviewDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Button(
-                    onClick = { galleryLauncher.launch("image/*") },
-                    modifier = Modifier.fillMaxWidth()
+                // שני כפתורים: גלריה + מצלמה
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("Choose Image")
+                    Button(
+                        onClick = { galleryLauncher.launch("image/*") },
+                        modifier = Modifier.weight(1f)
+                    ) { Text("Choose from Gallery") }
+
+                    Button(
+                        onClick = { cameraLauncher.launch(null) },
+                        modifier = Modifier.weight(1f)
+                    ) { Text("Take Photo") }
                 }
 
                 selectedImageUri?.let {
@@ -271,7 +299,7 @@ fun AddReviewDialog(
                         rating = rating,
                         comment = comment,
                         address = address,
-                        imagePath = imageUrl // עכשיו URL אמיתי מה-Storage
+                        imagePath = imageUrl
                     )
                     onSave(review)
                 }
