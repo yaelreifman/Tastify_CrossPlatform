@@ -1,7 +1,8 @@
 package org.example.project.data
 
 import dev.gitlive.firebase.Firebase
-import dev.gitlive.firebase.firestore.*
+import dev.gitlive.firebase.firestore.CollectionReference
+import dev.gitlive.firebase.firestore.firestore // ← חשוב ל-import הזה!
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import org.example.project.model.Review
@@ -13,28 +14,34 @@ interface ReviewsRepository {
 
 class FirebaseReviewsRepository : ReviewsRepository {
 
-    private val collection: FirebaseFirestoreCollectionReference
+    private val collection: CollectionReference
         get() = Firebase.firestore.collection("reviews")
 
     override fun listenReviews(): Flow<Reviews> {
-        // מאזין בזמן אמת לשינויים ב-Firestore
-        return collection.snapshots.map { snap ->
-            val items = snap.documents.mapNotNull { doc ->
-                // מיפוי מסמך → Review
-                val data = doc.data<Map<String, Any?>>()
+        return collection.snapshots.map { snapshot ->
+            val items = snapshot.documents.map { doc ->
+                // קוראים מסמך ל-DTO סריאליזבילי
+                val w: Review = doc.data()  // דורש kotlinx-serialization-json
+
+                // ממפים ל-Review המשותף שלך
                 Review(
                     id = doc.id,
-                    restaurantId = data["restaurantId"] as? String ?: "",
-                    restaurantName = data["restaurantName"] as? String ?: "",
-                    rating = (data["rating"] as? Number)?.toInt() ?: 0,
-                    comment = data["comment"] as? String ?: "",
-                    imagePath = data["imageUrl"] as? String,
-                    address = data["address"] as? String,
-                    latitude = (data["latitude"] as? Number)?.toDouble(),
-                    longitude = (data["longitude"] as? Number)?.toDouble(),
-                    placeId = data["placeId"] as? String,
+                    restaurantId = w.restaurantId.orEmpty(),
+                    restaurantName = w.restaurantName.orEmpty(),
+                    rating = w.rating ?: 0,
+                    comment = w.comment.orEmpty(),
+
+                    // שימי לב: במודל שלך היה imagePath; ממפים מ-imageUrl של Firestore
+                    imagePath = w.imagePath,  // ← מומלץ ליישר את המודל שלך לשם הזה
+
+                    address = w.address,
+                    latitude = w.latitude,
+                    longitude = w.longitude,
+                    placeId = w.placeId,
+                    createdAt = w.createdAt
                 )
             }
+
             Reviews(items.sortedByDescending { it.createdAt ?: 0L })
         }
     }
