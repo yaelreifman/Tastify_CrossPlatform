@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "425955048823",
+    "project_id": "tastifykmp",
+    "storage_bucket": "tastifykmp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:425955048823:android:5b4964be72a3f699487572",
+        "android_client_info": {
+          "package_name": "org.example.project"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBXdJu-DSdZnBmilZLDo1AnWnheTqQGcys"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
