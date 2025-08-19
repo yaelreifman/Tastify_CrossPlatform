@@ -6,6 +6,9 @@ plugins {
     alias(libs.plugins.androidLibrary)
     id("co.touchlab.skie") version "0.10.1"
     id("com.google.gms.google-services")
+    kotlin("plugin.serialization") version "2.1.0"
+
+
 }
 
 kotlin {

@@ -1,6 +1,8 @@
 package org.example.project.model
 
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class Review(
     var id: String = "",
     var restaurantId: String = "",
