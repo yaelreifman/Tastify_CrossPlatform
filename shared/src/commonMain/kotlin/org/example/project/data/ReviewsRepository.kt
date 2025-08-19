@@ -10,7 +10,7 @@ import org.example.project.model.Reviews
 
 interface ReviewsRepository {
     fun listenReviews(): Flow<Reviews>
-    suspend fun addReview(review: Review)   // ← פונקציה חדשה
+    suspend fun addReview(review: Review)
 }
 
 class FirebaseReviewsRepository : ReviewsRepository {
@@ -25,25 +25,26 @@ class FirebaseReviewsRepository : ReviewsRepository {
 
                 Review(
                     id = doc.id,
-                    restaurantId = w.restaurantId.orEmpty(),
                     restaurantName = w.restaurantName.orEmpty(),
                     rating = w.rating ?: 0,
                     comment = w.comment.orEmpty(),
-                    imagePath = w.imagePath,
-                    address = w.address,
-                    latitude = w.latitude,
-                    longitude = w.longitude,
-                    placeId = w.placeId,
-                    createdAt = w.createdAt.orEmpty() // עכשיו זה מחרוזת
+                    address = w.address.orEmpty(),
+                    imagePath = w.imagePath.orEmpty()
                 )
             }
-
-            Reviews(items.sortedByDescending { it.createdAt })
+            Reviews(items.sortedByDescending { it.id })
         }
     }
 
     override suspend fun addReview(review: Review) {
-        // נשמור במסמך חדש עם id אוטומטי
-        collection.add(review)
+        collection.add(
+            Review(
+                restaurantName = review.restaurantName,
+                rating = review.rating,
+                comment = review.comment,
+                address = review.address,
+                imagePath = review.imagePath
+            )
+        )
     }
 }

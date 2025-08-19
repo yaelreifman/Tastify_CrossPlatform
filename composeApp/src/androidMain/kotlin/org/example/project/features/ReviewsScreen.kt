@@ -1,25 +1,28 @@
 package org.example.project.features
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.rememberAsyncImagePainter
 import org.example.project.features.Reviews.ReviewsState
 import org.example.project.features.Reviews.ReviewsViewModel
 import org.example.project.model.Review
 import org.example.project.model.Reviews
-import java.text.SimpleDateFormat
-import java.util.*
 
 @Composable
 fun ReviewsScreen(
@@ -47,9 +50,9 @@ fun ReviewsContent(
             reviews.items
         } else {
             reviews.items.filter { review ->
-                review.id.contains(searchQuery, ignoreCase = true) ||
+                review.restaurantName?.contains(searchQuery, ignoreCase = true) == true ||
                         review.comment?.contains(searchQuery, ignoreCase = true) == true ||
-                        review.restaurantName?.contains(searchQuery, ignoreCase = true) == true
+                        review.address?.contains(searchQuery, ignoreCase = true) == true
             }
         }
     }
@@ -93,7 +96,7 @@ fun ReviewsContent(
         AddReviewDialog(
             onDismiss = { showDialog = false },
             onSave = { newReview ->
-                viewModel.addReview(newReview)   // ✅ נשמר ב-Firestore
+                viewModel.addReview(newReview)   // ✅ שמירה בפיירבייס
                 showDialog = false
             }
         )
@@ -106,24 +109,39 @@ fun ReviewContent(
 ) {
     Card(
         modifier = Modifier
-            .fillMaxSize()
-            .height(160.dp)
+            .fillMaxWidth()
             .padding(8.dp),
         shape = RoundedCornerShape(8.dp),
         elevation = CardDefaults.elevatedCardElevation(2.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxSize()
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(12.dp),
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text(text = review.restaurantName)
-                Text(text = "Rating: ${review.rating}")
-                Text(text = review.comment ?: "")
+            Text(text = review.restaurantName ?: "", style = MaterialTheme.typography.titleMedium)
+
+            // ⭐ כוכבים
+            Row {
+                repeat(5) { index ->
+                    Icon(
+                        imageVector = Icons.Filled.Star,
+                        contentDescription = null,
+                        tint = if (index < (review.rating ?: 0)) Color.Yellow else Color.Gray
+                    )
+                }
+            }
+
+            Text(text = review.comment ?: "")
+            Text(text = "📍 ${review.address ?: ""}", style = MaterialTheme.typography.bodySmall)
+
+            if (!review.imagePath.isNullOrBlank()) {
+                Image(
+                    painter = rememberAsyncImagePainter(review.imagePath),
+                    contentDescription = "Review image",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp)
+                )
             }
         }
     }
@@ -135,91 +153,72 @@ fun AddReviewDialog(
     onSave: (Review) -> Unit
 ) {
     var restaurantName by remember { mutableStateOf("") }
-    var restaurantId by remember { mutableStateOf("") }
-    var rating by remember { mutableStateOf("") }
+    var rating by remember { mutableIntStateOf(0) }
     var comment by remember { mutableStateOf("") }
-    var imagePath by remember { mutableStateOf("") }
     var address by remember { mutableStateOf("") }
-    var latitude by remember { mutableStateOf("") }
-    var longitude by remember { mutableStateOf("") }
-    var placeId by remember { mutableStateOf("") }
+    var imageUrl by remember { mutableStateOf("") } // כאן המשתמש יכניס קישור או אחרי העלאה ל-Firebase Storage
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Add New Review") },
         text = {
-            Column {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = restaurantName,
                     onValueChange = { restaurantName = it },
                     label = { Text("Restaurant Name") },
                     modifier = Modifier.fillMaxWidth()
                 )
-                OutlinedTextField(
-                    value = restaurantId,
-                    onValueChange = { restaurantId = it },
-                    label = { Text("Restaurant ID") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = rating,
-                    onValueChange = { rating = it },
-                    label = { Text("Rating (1-5)") },
-                    modifier = Modifier.fillMaxWidth()
-                )
+
+                // ⭐ בורר כוכבים
+                Row {
+                    repeat(5) { index ->
+                        IconToggleButton(
+                            checked = index < rating,
+                            onCheckedChange = {
+                                rating = index + 1
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Star,
+                                contentDescription = null,
+                                tint = if (index < rating) Color.Yellow else Color.Gray
+                            )
+                        }
+                    }
+                }
+
                 OutlinedTextField(
                     value = comment,
                     onValueChange = { comment = it },
                     label = { Text("Comment") },
                     modifier = Modifier.fillMaxWidth()
                 )
-                OutlinedTextField(
-                    value = imagePath,
-                    onValueChange = { imagePath = it },
-                    label = { Text("Image Path (optional)") },
-                    modifier = Modifier.fillMaxWidth()
-                )
+
                 OutlinedTextField(
                     value = address,
                     onValueChange = { address = it },
                     label = { Text("Address") },
                     modifier = Modifier.fillMaxWidth()
                 )
+
                 OutlinedTextField(
-                    value = latitude,
-                    onValueChange = { latitude = it },
-                    label = { Text("Latitude") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = longitude,
-                    onValueChange = { longitude = it },
-                    label = { Text("Longitude") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = placeId,
-                    onValueChange = { placeId = it },
-                    label = { Text("Place ID") },
+                    value = imageUrl,
+                    onValueChange = { imageUrl = it },
+                    label = { Text("Image URL") }, // בהמשך נחליף להעלאת קובץ ל-Storage
                     modifier = Modifier.fillMaxWidth()
                 )
             }
         },
         confirmButton = {
             TextButton(onClick = {
-                val now = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
                 val review = Review(
                     id = System.currentTimeMillis().toString(),
-                    restaurantId = restaurantId,
                     restaurantName = restaurantName,
-                    rating = rating.toIntOrNull() ?: 0,
+                    rating = rating,
                     comment = comment,
-                    imagePath = imagePath.ifBlank { null },
-                    address = address.ifBlank { null },
-                    latitude = latitude.toDoubleOrNull(),
-                    longitude = longitude.toDoubleOrNull(),
-                    placeId = placeId.ifBlank { null },
-                    createdAt = now
+                    address = address,
+                    imagePath = imageUrl
                 )
                 onSave(review)
             }) {

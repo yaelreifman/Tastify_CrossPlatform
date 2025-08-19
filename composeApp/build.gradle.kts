@@ -78,5 +78,9 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(platform("com.google.firebase:firebase-bom:33.14.0"))
     implementation("com.google.firebase:firebase-common-ktx:21.0.0")
+    implementation("io.coil-kt:coil-compose:2.6.0")
+
 }
+
+
 
