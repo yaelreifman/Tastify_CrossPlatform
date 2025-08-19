@@ -4,17 +4,20 @@ import Shared
 
 struct ReviewDetailsScreen: View {
     let reviewId: String
-    @StateObject private var wrapper = ReviewsVMiOS(  vm: ReviewsViewModel(
-        repo: FirebaseReviewsRepository(),
-        enrichLocation: EnrichReviewLocationUseCase(
-            dataSource: DummyRestaurantLocationDataSource()
-        )))
+    @StateObject private var wrapper = ReviewsVMiOS(
+        vm: ReviewsViewModel(
+            repo: FirebaseReviewsRepository(),
+            enrichLocation: EnrichReviewLocationUseCase(
+                dataSource: DummyRestaurantLocationDataSource()
+            )
+        )
+    )
 
     var body: some View {
         Group {
             switch onEnum(of: wrapper.state) {
             case .loading:
-                VStack { ProgressView(); Text("Loading…") }
+                ProgressView("Loading…")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             case .error(let e):
@@ -26,7 +29,7 @@ struct ReviewDetailsScreen: View {
                 if let review = payload.reviews.items.first(where: { $0.id == reviewId }) {
                     ReviewDetailsContent(review: review)
                 } else {
-                    Text("Review not found").frame(maxWidth: .infinity, maxHeight: .infinity)
+                    Text("Review not found")
                 }
             }
         }
@@ -40,8 +43,7 @@ private struct ReviewDetailsContent: View {
 
     var body: some View {
         ScrollView {
-            // תמונה
-            if let path = review.imagePath, !path.isEmpty, let url = URL(string: path) {
+            if let path = review.imagePath, let url = URL(string: path) {
                 AsyncImage(url: url) { phase in
                     switch phase {
                     case .success(let img): img.resizable().scaledToFill()
@@ -52,50 +54,40 @@ private struct ReviewDetailsContent: View {
                 .clipped()
             }
 
-            // פרטים
-            VStack(alignment: .leading, spacing: Dimens.md) {
+            VStack(alignment: .leading, spacing: 12) {
                 Text(review.restaurantName.isEmpty ? "Restaurant" : review.restaurantName)
-                    .font(Fonts.title)
+                    .font(.title)
 
-                let rating = Int(review.rating ?? 0)
+                let rating = review.rating?.intValue ?? 0
                 if rating > 0 {
-                    HStack(spacing: 2) {
-                        ForEach(0..<min(rating, Stars.max), id: \.self) { _ in
-                            Image(systemName: "star.fill").foregroundStyle(AppColors.star)
+                    HStack {
+                        ForEach(0..<min(rating, 5), id: \.self) { _ in
+                            Image(systemName: "star.fill")
+                                .foregroundStyle(.yellow)
                         }
                     }
-                    .font(.caption)
                 }
 
                 if let addr = review.address, !addr.isEmpty {
-                    Text(addr).font(Fonts.body).foregroundStyle(AppColors.onSurfaceVariant)
+                    Text(addr).foregroundStyle(.secondary)
                 }
 
                 if !review.comment.isEmpty {
-                    Text(review.comment).font(Fonts.body)
+                    Text(review.comment)
                 }
             }
-            .padding(.horizontal, Dimens.lg)
-            .padding(.top, Dimens.md)
+            .padding()
 
-            // מפה (אם יש קואורדינטות; אם אין—דולג)
-            if let lat = review.latitude?.doubleValue, let lng = review.longitude?.doubleValue {
+            if let lat = review.latitude?.doubleValue,
+               let lng = review.longitude?.doubleValue {
                 GoogleMapView(
                     coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lng),
                     title: review.restaurantName.isEmpty ? "Restaurant" : review.restaurantName
                 )
                 .frame(height: 240)
-                .clipShape(RoundedRectangle(cornerRadius: Dimens.radiusLg))
-                .padding(.horizontal, Dimens.lg)
-                .padding(.vertical, Dimens.md)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .padding()
             }
         }
     }
 }
-//
-//  ReviewDetailsScreen.swift
-//  iosApp
-//
-//  Created by sharon bronshteyn on 19/08/2025.
-//
-

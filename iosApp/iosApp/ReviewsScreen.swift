@@ -1,188 +1,105 @@
-//
-//  ReviewsScreen.swift
-//  iosApp
-//
-//  Created by sharon bronshteyn on 18/08/2025.
-//
-
 import SwiftUI
 import Shared
 
-// MARK: - ViewModel Wrapper (Top-Level)
-
-@MainActor
-final class ReviewsViewModelWrapper: ObservableObject {
-    let viewModel: ReviewsViewModel
-    @Published var uiState: ReviewsState
-
-    init() {
-        self.viewModel = ReviewsViewModel()
-        self.uiState = viewModel.uiState.value
-    }
-
-    func startObserving() async {
-        // StateFlow<ReviewsState> נחשף ע״י SKIE כ-AsyncSequence
-        for await state in viewModel.uiState {
-            self.uiState = state
-        }
-    }
-}
-
-// MARK: - Screen
-
 struct ReviewsScreen: View {
-    @StateObject private var viewModel = ReviewsViewModelWrapper()
+    @StateObject private var wrapper = ReviewsVMiOS(
+        vm: ReviewsViewModel(
+            repo: FirebaseReviewsRepository(),
+            enrichLocation: EnrichReviewLocationUseCase(
+                dataSource: DummyRestaurantLocationDataSource()
+            )
+        )
+    )
+
+    @State private var showAddReview = false
+    @State private var searchQuery = ""
 
     var body: some View {
-        VStack {
-            switch onEnum(of: viewModel.uiState) {
-            case .loading:
-                LoadingView()
+        NavigationStack {
+            Group {
+                switch onEnum(of: wrapper.state) {
+                case .loading:
+                    ProgressView("Loading…")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            case .loaded(let loaded):
-                ReviewsListView(reviews: loaded.reviews)
+                case .error(let e):
+                    Text(e.errorMessage)
+                        .foregroundStyle(.red)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            case .error(let err):
-                ErrorView(message: err.errorMessage)
+                case .loaded(let payload):
+                    VStack {
+                        Button("ADD NEW REVIEW") {
+                            showAddReview = true
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .padding()
+
+                        TextField("Search reviews", text: $searchQuery)
+                            .textFieldStyle(.roundedBorder)
+                            .padding(.horizontal)
+
+                        List {
+                            ForEach(payload.reviews.items.filter { review in
+                                searchQuery.isEmpty
+                                || review.restaurantName.localizedCaseInsensitiveContains(searchQuery)
+                                || review.comment.localizedCaseInsensitiveContains(searchQuery)
+                                || review.address.localizedCaseInsensitiveContains(searchQuery)
+                            }, id: \.id) { review in
+                                NavigationLink {
+                                    ReviewDetailsScreen(reviewId: review.id)
+                                } label: {
+                                    ReviewRow(review: review)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Reviews")
+            .sheet(isPresented: $showAddReview) {
+                AddReviewSheet { newReview in
+                    wrapper.addReview(newReview)
+                }
             }
         }
-        .task {
-            await viewModel.startObserving()
-        }
-        .navigationTitle("Reviews")
     }
 }
 
-// MARK: - List + Rows
-
-struct ReviewsListView: View {
-    let reviews: Reviews
-
-    var body: some View {
-        List(reviews.items, id: \.id) { review in
-            ReviewRowView(review: review)
-        }
-        .listStyle(.plain)
-    }
-}
-
-struct ReviewRowView: View {
+private struct ReviewRow: View {
     let review: Review
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            ReviewImageView(imagePath: review.imagePath)
+        VStack(alignment: .leading, spacing: 6) {
+            Text(review.restaurantName.isEmpty ? "Restaurant" : review.restaurantName)
+                .font(.headline)
 
-            VStack(alignment: .leading, spacing: 6) {
-                // אין title במודל, נשתמש ב-id ככותרת
-                Text(nonEmpty(review.id) ?? "Untitled")
-                    .font(.headline)
-                    .lineLimit(2)
-
-                if let text = nonEmpty(review.comment) {
-                    Text(text)
-                        .font(.body)
-                        .lineLimit(3)
-                }
-
-                let rating = review.rating
-                if rating > 0 {
-                    HStack(spacing: 2) {
-                        ForEach(0..<min(rating, 5), id: \.self) { _ in
-                            Image(systemName: "star.fill")
-                        }
+            if let path = review.imagePath, let url = URL(string: path) {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let img): img.resizable().scaledToFill()
+                    default: Color.gray.opacity(0.2)
                     }
-                    .font(.caption)
+                }
+                .frame(height: 120)
+                .clipped()
+            }
+
+            HStack {
+                ForEach(0..<5, id: \.self) { idx in
+                    Image(systemName: "star.fill")
+                        .foregroundStyle(idx < (review.rating?.intValue ?? 0) ? .yellow : .gray)
                 }
             }
-            Spacer(minLength: 0)
-            
-            NavigationLink {
-                           RestaurantMapScreen(review: review)
-                       } label: {
-                           Label("View on map", systemImage: "map")
-                       }
-                       .font(.subheadline)
+
+            if !review.comment.isEmpty {
+                Text(review.comment)
+            }
+
+            if let addr = review.address, !addr.isEmpty {
+                Text("📍 \(addr)").font(.caption).foregroundStyle(.secondary)
+            }
         }
         .padding(.vertical, 8)
-    }
-
-    private func nonEmpty(_ s: String?) -> String? {
-        guard let s, !s.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
-        return s
-    }
-}
-
-struct ReviewImageView: View {
-    let imagePath: String?
-
-    var body: some View {
-        if let path = imagePath, let url = URL(string: path) {
-            AsyncImage(url: url) { phase in
-                switch phase {
-                case .empty:
-                    placeholder
-                case .success(let image):
-                    image.resizable().scaledToFill()
-                case .failure:
-                    placeholder
-                @unknown default:
-                    placeholder
-                }
-            }
-            .frame(width: 56, height: 56)
-            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-        } else {
-            placeholder
-                .frame(width: 56, height: 56)
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-        }
-    }
-
-    private var placeholder: some View {
-        ZStack {
-            Color.gray.opacity(0.15)
-            Image(systemName: "photo")
-                .imageScale(.medium)
-                .foregroundStyle(.secondary)
-        }
-    }
-}
-
-// MARK: - States
-
-struct LoadingView: View {
-    var body: some View {
-        VStack(spacing: 12) {
-            ProgressView()
-            Text("Loading…")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-        }
-        .padding(.top, 40)
-    }
-}
-
-struct ErrorView: View {
-    var message: String
-    var body: some View {
-        VStack(spacing: 10) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .imageScale(.large)
-                .foregroundStyle(.orange)
-            Text(message)
-                .font(.title3)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
-        }
-        .padding(.top, 40)
-    }
-}
-
-// MARK: - Preview
-
-#Preview {
-    NavigationView {
-        ReviewsScreen()
     }
 }
