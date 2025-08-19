@@ -1,4 +1,5 @@
 package org.example.project.features
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,10 +18,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
+import kotlinx.coroutines.launch
+import org.example.project.data.GeocodingRepository
 import org.example.project.features.Reviews.ReviewsState
 import org.example.project.features.Reviews.ReviewsViewModel
 import org.example.project.model.Review
@@ -35,7 +37,7 @@ fun DetailsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    // חפשי את הביקורת לפי ה-id מהסטייט הטעון
+    // חפשי את הביקורת לפי ה-id מהסטייט
     val review: Review? = when (val s = uiState) {
         is ReviewsState.Loaded -> s.reviews.items.firstOrNull { it.id == id }
         else -> null
@@ -81,12 +83,27 @@ fun DetailsScreen(
 
 @Composable
 private fun ReviewDetailsContent(review: Review) {
+    var coordinates by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+    val scope = rememberCoroutineScope()
+
+    // אם אין קואורדינטות אבל יש כתובת -> נבצע Geocoding
+    LaunchedEffect(review.address) {
+        if (review.latitude == null && review.longitude == null && !review.address.isNullOrBlank()) {
+            scope.launch {
+                val result = GeocodingRepository.getCoordinatesFromAddress(review.address!!)
+                result?.let { coordinates = it }
+            }
+        } else if (review.latitude != null && review.longitude != null) {
+            coordinates = Pair(review.latitude!!, review.longitude!!)
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
     ) {
-        // תמונה עליונה
+        // תמונה
         if (!review.imagePath.isNullOrBlank()) {
             AsyncImage(
                 model = review.imagePath,
@@ -103,14 +120,12 @@ private fun ReviewDetailsContent(review: Review) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // שם המסעדה
             Text(
-                text = review.restaurantName.orEmpty().ifBlank { "Restaurant" },
+                text = review.restaurantName.ifBlank { "Restaurant" },
                 style = MaterialTheme.typography.titleLarge
             )
 
-            // דירוג
-            val rating = review.rating ?: 0
+            val rating = review.rating
             if (rating > 0) {
                 Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                     repeat(min(rating, 5)) {
@@ -123,28 +138,17 @@ private fun ReviewDetailsContent(review: Review) {
                 }
             }
 
-            // כתובת
             review.address?.takeIf { it.isNotBlank() }?.let {
-                Text(
-                    text = "📍 $it",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Text("📍 $it", style = MaterialTheme.typography.bodyMedium)
             }
 
-            // תגובה / טקסט
-            review.comment?.takeIf { it.isNotBlank() }?.let {
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodyLarge
-                )
+            review.comment.takeIf { it.isNotBlank() }?.let {
+                Text(it, style = MaterialTheme.typography.bodyLarge)
             }
         }
 
-        // מפה (אם יש קואורדינטות)
-        val lat = review.latitude
-        val lng = review.longitude
-        if (lat != null && lng != null) {
+        // מפה אם יש קואורדינטות
+        coordinates?.let { (lat, lng) ->
             val pos = LatLng(lat, lng)
             val cameraPositionState = rememberCameraPositionState {
                 position = CameraPosition.fromLatLngZoom(pos, 15f)
@@ -163,7 +167,7 @@ private fun ReviewDetailsContent(review: Review) {
                 ) {
                     Marker(
                         state = MarkerState(position = pos),
-                        title = review.restaurantName.orEmpty().ifBlank { "Restaurant" }
+                        title = review.restaurantName.ifBlank { "Restaurant" }
                     )
                 }
             }

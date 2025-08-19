@@ -12,13 +12,10 @@ import org.example.project.model.Reviews
 import org.example.project.model.Review
 import org.example.project.data.ReviewsRepository
 import org.example.project.data.FirebaseReviewsRepository
-import org.example.project.domain.EnrichReviewLocationUseCase
-import org.example.project.location.DummyRestaurantLocationDataSource
+import org.example.project.data.GeocodingRepository
 
 class ReviewsViewModel(
-    private val repo: ReviewsRepository = FirebaseReviewsRepository(),
-    private val enrichLocation: EnrichReviewLocationUseCase =
-        EnrichReviewLocationUseCase(DummyRestaurantLocationDataSource())
+    private val repo: ReviewsRepository = FirebaseReviewsRepository()
 ) : BaseViewModel() {
 
     private val _uiState: MutableStateFlow<ReviewsState> =
@@ -33,9 +30,17 @@ class ReviewsViewModel(
         scope.launch {
             repo.listenReviews()
                 .onStart { _uiState.value = ReviewsState.Loading }
-                .map { reviews ->
+                .map { reviews: Reviews ->   // ✅ טיפוס מפורש
                     val enriched = reviews.items.map { review ->
-                        enrichLocation.enrich(review)
+                        if (!review.address.isNullOrBlank() && review.latitude == null) {
+                            GeocodingRepository.getCoordinatesFromAddress(review.address!!)
+                                ?.let { coords ->
+                                    review.copy(
+                                        latitude = coords.first,
+                                        longitude = coords.second
+                                    )
+                                } ?: review
+                        } else review
                     }
                     Reviews(enriched)
                 }
@@ -51,7 +56,17 @@ class ReviewsViewModel(
     fun addReview(review: Review) {
         scope.launch {
             try {
-                repo.addReview(review)
+                var enrichedReview = review
+                if (!review.address.isNullOrBlank()) {
+                    GeocodingRepository.getCoordinatesFromAddress(review.address!!)
+                        ?.let { coords ->
+                            enrichedReview = review.copy(
+                                latitude = coords.first,
+                                longitude = coords.second
+                            )
+                        }
+                }
+                repo.addReview(enrichedReview)
             } catch (e: Exception) {
                 _uiState.value = ReviewsState.Error("Failed to add review: ${e.message}")
             }
