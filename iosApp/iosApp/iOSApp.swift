@@ -2,11 +2,15 @@ import SwiftUI
 import GoogleMaps
 import GooglePlaces
 import FirebaseCore
+import Shared
+
 
 @main
 struct iOSApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
+    
+    
     var body: some Scene {
         WindowGroup {
             NavigationStack {
