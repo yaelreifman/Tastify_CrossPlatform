@@ -21,15 +21,15 @@ class FirebaseReviewsRepository : ReviewsRepository {
     override fun listenReviews(): Flow<Reviews> {
         return collection.snapshots.map { snapshot ->
             val items = snapshot.documents.map { doc ->
-                val w: Review = doc.data()
-
                 Review(
                     id = doc.id,
-                    restaurantName = w.restaurantName.orEmpty(),
-                    rating = w.rating ?: 0,
-                    comment = w.comment.orEmpty(),
-                    address = w.address.orEmpty(),
-                    imagePath = w.imagePath.orEmpty()
+                    restaurantName = doc.get("restaurantName") as? String ?: "",
+                    rating = (doc.get("rating") as? Long)?.toInt() ?: 0,
+                    comment = doc.get("comment") as? String ?: "",
+                    address = doc.get("address") as? String ?: "",
+                    imagePath = doc.get("imagePath") as? String ?: "",
+                    latitude = (doc.get("latitude") as? Double),
+                    longitude = (doc.get("longitude") as? Double)
                 )
             }
             Reviews(items.sortedByDescending { it.id })
@@ -37,14 +37,15 @@ class FirebaseReviewsRepository : ReviewsRepository {
     }
 
     override suspend fun addReview(review: Review) {
-        collection.add(
-            Review(
-                restaurantName = review.restaurantName,
-                rating = review.rating,
-                comment = review.comment,
-                address = review.address,
-                imagePath = review.imagePath
-            )
+        val data = mapOf(
+            "restaurantName" to review.restaurantName,
+            "rating" to review.rating,
+            "comment" to review.comment,
+            "address" to review.address,
+            "imagePath" to review.imagePath,
+            "latitude" to review.latitude,   // ✅ תמיד נשלח, גם אם null
+            "longitude" to review.longitude  // ✅ תמיד נשלח, גם אם null
         )
+        collection.add(data)
     }
 }

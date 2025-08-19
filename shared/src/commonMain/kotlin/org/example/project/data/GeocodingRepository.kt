@@ -6,6 +6,10 @@ import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -23,20 +27,32 @@ object GeocodingRepository {
         }
     }
 
-    suspend fun getCoordinatesFromAddress(address: String): Pair<Double, Double>? {
-        return try {
-            val response: GeocodingResponse = client.get(BASE_URL) {
-                parameter("address", address)
-                parameter("key", API_KEY)
-            }.body()
+    suspend fun getCoordinatesFromAddress(address: String): Pair<Double, Double>? =
+        withContext(Dispatchers.IO) {
+            try {
+                // 🕐 Timeout ל-5 שניות
+                withTimeout(5000) {
+                    val response: GeocodingResponse = client.get(BASE_URL) {
+                        parameter("address", address)
+                        parameter("key", API_KEY)
+                    }.body()
 
-            val location = response.results.firstOrNull()?.geometry?.location
-            location?.let { Pair(it.lat, it.lng) }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
+                    val location = response.results.firstOrNull()?.geometry?.location
+                    if (location != null) {
+                        println("✅ Geocoding success: $address -> ${location.lat}, ${location.lng}")
+                        Pair(location.lat, location.lng)
+                    } else {
+                        println("⚠️ Geocoding failed for: $address (status=${response.status})")
+                        null
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                println("❌ Geocoding exception: ${e.message}")
+                // 🟢 Fallback לתל אביב
+                Pair(32.0853, 34.7818)
+            }
         }
-    }
 }
 
 @Serializable
