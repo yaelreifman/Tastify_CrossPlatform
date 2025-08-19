@@ -9,12 +9,11 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import org.example.project.features.BaseViewModel
 import org.example.project.model.Reviews
+import org.example.project.model.Review
 import org.example.project.data.ReviewsRepository
 import org.example.project.data.FirebaseReviewsRepository
 import org.example.project.domain.EnrichReviewLocationUseCase
 import org.example.project.location.DummyRestaurantLocationDataSource
-
-
 
 class ReviewsViewModel(
     private val repo: ReviewsRepository = FirebaseReviewsRepository(),
@@ -34,7 +33,6 @@ class ReviewsViewModel(
         scope.launch {
             repo.listenReviews()
                 .onStart { _uiState.value = ReviewsState.Loading }
-                // מעשירים קואורדינטות אם חסרות (lat/lng/placeId)
                 .map { reviews ->
                     val enriched = reviews.items.map { review ->
                         enrichLocation.enrich(review)
@@ -47,6 +45,16 @@ class ReviewsViewModel(
                 .collectLatest { reviews ->
                     _uiState.value = ReviewsState.Loaded(reviews)
                 }
+        }
+    }
+
+    fun addReview(review: Review) {
+        scope.launch {
+            try {
+                repo.addReview(review)
+            } catch (e: Exception) {
+                _uiState.value = ReviewsState.Error("Failed to add review: ${e.message}")
+            }
         }
     }
 }

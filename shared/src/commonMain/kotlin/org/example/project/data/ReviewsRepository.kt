@@ -10,6 +10,7 @@ import org.example.project.model.Reviews
 
 interface ReviewsRepository {
     fun listenReviews(): Flow<Reviews>
+    suspend fun addReview(review: Review)   // ← פונקציה חדשה
 }
 
 class FirebaseReviewsRepository : ReviewsRepository {
@@ -37,8 +38,12 @@ class FirebaseReviewsRepository : ReviewsRepository {
                 )
             }
 
-            // אם createdAt נשמר כטקסט של תאריך, אפשר למיין אלפביתית
             Reviews(items.sortedByDescending { it.createdAt })
         }
+    }
+
+    override suspend fun addReview(review: Review) {
+        // נשמור במסמך חדש עם id אוטומטי
+        collection.add(review)
     }
 }

@@ -1,15 +1,6 @@
 package org.example.project.features
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -27,6 +18,8 @@ import org.example.project.features.Reviews.ReviewsState
 import org.example.project.features.Reviews.ReviewsViewModel
 import org.example.project.model.Review
 import org.example.project.model.Reviews
+import java.text.SimpleDateFormat
+import java.util.*
 
 @Composable
 fun ReviewsScreen(
@@ -35,7 +28,7 @@ fun ReviewsScreen(
     val uiState = viewModel.uiState.collectAsState().value
     when (uiState) {
         is ReviewsState.Error -> ErrorContent(message = uiState.errorMessage)
-        is ReviewsState.Loaded -> ReviewsContent(uiState.reviews)
+        is ReviewsState.Loaded -> ReviewsContent(uiState.reviews, viewModel)
         ReviewsState.Loading -> LoadingContent()
     }
 }
@@ -43,18 +36,17 @@ fun ReviewsScreen(
 @Composable
 fun ReviewsContent(
     reviews: Reviews,
+    viewModel: ReviewsViewModel,
     lazyListState: LazyListState = rememberLazyListState()
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var showDialog by remember { mutableStateOf(false) }
-    var localReviews by remember { mutableStateOf(reviews.items) }
 
-    // סינון ביקורות לפי טקסט
-    val filteredReviews = remember(searchQuery, localReviews) {
+    val filteredReviews = remember(searchQuery, reviews.items) {
         if (searchQuery.isBlank()) {
-            localReviews
+            reviews.items
         } else {
-            localReviews.filter { review ->
+            reviews.items.filter { review ->
                 review.id.contains(searchQuery, ignoreCase = true) ||
                         review.comment?.contains(searchQuery, ignoreCase = true) == true ||
                         review.restaurantName?.contains(searchQuery, ignoreCase = true) == true
@@ -67,7 +59,6 @@ fun ReviewsContent(
             .padding(20.dp)
             .fillMaxSize()
     ) {
-        // כפתור להוספת ביקורת
         Button(
             onClick = { showDialog = true },
             modifier = Modifier
@@ -77,7 +68,6 @@ fun ReviewsContent(
             Text("ADD NEW REVIEW")
         }
 
-        // שורת חיפוש
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
@@ -88,7 +78,6 @@ fun ReviewsContent(
             singleLine = true
         )
 
-        // רשימת ביקורות
         LazyColumn(
             state = lazyListState,
             contentPadding = PaddingValues(8.dp),
@@ -104,7 +93,7 @@ fun ReviewsContent(
         AddReviewDialog(
             onDismiss = { showDialog = false },
             onSave = { newReview ->
-                localReviews = localReviews + newReview
+                viewModel.addReview(newReview)   // ✅ נשמר ב-Firestore
                 showDialog = false
             }
         )
@@ -146,8 +135,14 @@ fun AddReviewDialog(
     onSave: (Review) -> Unit
 ) {
     var restaurantName by remember { mutableStateOf("") }
+    var restaurantId by remember { mutableStateOf("") }
     var rating by remember { mutableStateOf("") }
     var comment by remember { mutableStateOf("") }
+    var imagePath by remember { mutableStateOf("") }
+    var address by remember { mutableStateOf("") }
+    var latitude by remember { mutableStateOf("") }
+    var longitude by remember { mutableStateOf("") }
+    var placeId by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -158,6 +153,12 @@ fun AddReviewDialog(
                     value = restaurantName,
                     onValueChange = { restaurantName = it },
                     label = { Text("Restaurant Name") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = restaurantId,
+                    onValueChange = { restaurantId = it },
+                    label = { Text("Restaurant ID") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
@@ -172,15 +173,53 @@ fun AddReviewDialog(
                     label = { Text("Comment") },
                     modifier = Modifier.fillMaxWidth()
                 )
+                OutlinedTextField(
+                    value = imagePath,
+                    onValueChange = { imagePath = it },
+                    label = { Text("Image Path (optional)") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = address,
+                    onValueChange = { address = it },
+                    label = { Text("Address") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = latitude,
+                    onValueChange = { latitude = it },
+                    label = { Text("Latitude") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = longitude,
+                    onValueChange = { longitude = it },
+                    label = { Text("Longitude") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = placeId,
+                    onValueChange = { placeId = it },
+                    label = { Text("Place ID") },
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         },
         confirmButton = {
             TextButton(onClick = {
+                val now = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
                 val review = Review(
                     id = System.currentTimeMillis().toString(),
+                    restaurantId = restaurantId,
                     restaurantName = restaurantName,
                     rating = rating.toIntOrNull() ?: 0,
-                    comment = comment
+                    comment = comment,
+                    imagePath = imagePath.ifBlank { null },
+                    address = address.ifBlank { null },
+                    latitude = latitude.toDoubleOrNull(),
+                    longitude = longitude.toDoubleOrNull(),
+                    placeId = placeId.ifBlank { null },
+                    createdAt = now
                 )
                 onSave(review)
             }) {
