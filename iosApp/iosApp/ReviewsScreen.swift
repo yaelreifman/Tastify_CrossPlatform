@@ -96,6 +96,13 @@ struct ReviewRowView: View {
                 }
             }
             Spacer(minLength: 0)
+            
+            NavigationLink {
+                           RestaurantMapScreen(review: review)
+                       } label: {
+                           Label("View on map", systemImage: "map")
+                       }
+                       .font(.subheadline)
         }
         .padding(.vertical, 8)
     }
