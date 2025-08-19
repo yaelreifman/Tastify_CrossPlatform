@@ -15,6 +15,7 @@ junit = "4.13.2"
 kotlin = "2.1.0"
 composeMaterialCore = "1.4.1"
 kotlinxCoroutinesCore = "1.10.1"
+ktorClientCore = "3.0.1"
 lifecycleViewmodelAndroid = "2.9.1"
 benchmarkCommon = "1.4.0"
 lifecycleViewmodelKtx = "2.9.2"
@@ -24,6 +25,7 @@ uiGraphics = "1.5.0"
 uiToolingPreview = "1.7.7"
 lifecycleViewmodelDesktop = "2.9.2"
 roomCommonJvm = "2.7.2"
+firebaseCrashlyticsBuildtools = "3.0.6"
 
 [libraries]
 androidx-foundation = { module = "androidx.compose.foundation:foundation", version.ref = "foundation" }
@@ -48,6 +50,12 @@ androidx-benchmark-common = { group = "androidx.benchmark", name = "benchmark-co
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutinesCore" }
 androidx-lifecycle-viewmodel-desktop = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-desktop", version.ref = "lifecycleViewmodelDesktop" }
 androidx-room-common-jvm = { group = "androidx.room", name = "room-common-jvm", version.ref = "roomCommonJvm" }
+firebase-crashlytics-buildtools = { group = "com.google.firebase", name = "firebase-crashlytics-buildtools", version.ref = "firebaseCrashlyticsBuildtools" }
+ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktorClientCore" }
+ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktorClientCore" }
+ktor-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "ktorClientCore" }
+ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktorClientCore" }
+ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktorClientCore" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
