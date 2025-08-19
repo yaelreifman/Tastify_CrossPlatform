@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import org.example.project.features.Reviews.ReviewsViewModel
 import org.example.project.features.ReviewsScreen
+import org.example.project.navigation.AppNavHost
 
 class MainActivity : ComponentActivity() {
     private val viewModel: ReviewsViewModel by viewModels()
@@ -18,8 +19,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            MaterialTheme{
-                ReviewsScreen(viewModel)
+            MaterialTheme {
+                AppNavHost()
             }
         }
     }
