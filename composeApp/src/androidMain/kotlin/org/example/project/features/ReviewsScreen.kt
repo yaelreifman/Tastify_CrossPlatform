@@ -1,5 +1,8 @@
 package org.example.project.features
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -28,8 +31,8 @@ import org.example.project.model.Reviews
 
 @Composable
 fun ReviewsScreen(
-    viewModel: ReviewsViewModel = ReviewsViewModel(), // או להזריק דרך DI
-    onNavigateToDetails: (String) -> Unit = {}        // <-- ניווט לפרטים
+    viewModel: ReviewsViewModel = ReviewsViewModel(),
+    onNavigateToDetails: (String) -> Unit = {}
 ) {
     val uiState = viewModel.uiState.collectAsState().value
     when (uiState) {
@@ -37,7 +40,7 @@ fun ReviewsScreen(
         is ReviewsState.Loaded -> ReviewsContent(
             reviews = uiState.reviews,
             viewModel = viewModel,
-            onNavigateToDetails = onNavigateToDetails // <-- מעבירים הלאה
+            onNavigateToDetails = onNavigateToDetails
         )
         ReviewsState.Loading -> LoadingContent()
     }
@@ -47,7 +50,7 @@ fun ReviewsScreen(
 fun ReviewsContent(
     reviews: Reviews,
     viewModel: ReviewsViewModel,
-    onNavigateToDetails: (String) -> Unit,           // <-- מתקבל פה
+    onNavigateToDetails: (String) -> Unit,
     lazyListState: LazyListState = rememberLazyListState()
 ) {
     var searchQuery by remember { mutableStateOf("") }
@@ -97,7 +100,7 @@ fun ReviewsContent(
             items(filteredReviews, key = { it.id }) { review ->
                 ReviewRowCard(
                     review = review,
-                    onClick = { onNavigateToDetails(review.id) } // <-- הניווט מתבצע כאן
+                    onClick = { onNavigateToDetails(review.id) }
                 )
             }
         }
@@ -107,7 +110,7 @@ fun ReviewsContent(
         AddReviewDialog(
             onDismiss = { showDialog = false },
             onSave = { newReview ->
-                viewModel.addReview(newReview)   // שמירה בפיירבייס
+                viewModel.addReview(newReview)
                 showDialog = false
             }
         )
@@ -123,7 +126,7 @@ private fun ReviewRowCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp)
-            .clickable(onClick = onClick),                  // <-- קליק על הכרטיס
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(8.dp),
         elevation = CardDefaults.elevatedCardElevation(2.dp)
     ) {
@@ -136,7 +139,6 @@ private fun ReviewRowCard(
                 style = MaterialTheme.typography.titleMedium
             )
 
-            // תמונה (אם יש)
             if (!review.imagePath.isNullOrBlank()) {
                 Image(
                     painter = rememberAsyncImagePainter(review.imagePath),
@@ -148,7 +150,6 @@ private fun ReviewRowCard(
                 )
             }
 
-            // ⭐ דירוג
             Row {
                 repeat(5) { index ->
                     Icon(
@@ -159,7 +160,6 @@ private fun ReviewRowCard(
                 }
             }
 
-            // טקסטים
             if (!review.comment.isNullOrBlank()) {
                 Text(text = review.comment!!)
             }
@@ -179,7 +179,15 @@ fun AddReviewDialog(
     var rating by remember { mutableIntStateOf(0) }
     var comment by remember { mutableStateOf("") }
     var address by remember { mutableStateOf("") }
-    var imageUrl by remember { mutableStateOf("") } // יישאר imagePath במודל
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? -> selectedImageUri = uri }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicturePreview()
+    ) { bitmap -> /* TODO: העלאה ל־Storage */ }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -192,6 +200,7 @@ fun AddReviewDialog(
                     label = { Text("Restaurant Name") },
                     modifier = Modifier.fillMaxWidth()
                 )
+
                 Row {
                     repeat(5) { index ->
                         IconToggleButton(
@@ -206,24 +215,50 @@ fun AddReviewDialog(
                         }
                     }
                 }
+
                 OutlinedTextField(
                     value = comment,
                     onValueChange = { comment = it },
                     label = { Text("Comment") },
                     modifier = Modifier.fillMaxWidth()
                 )
+
                 OutlinedTextField(
                     value = address,
                     onValueChange = { address = it },
                     label = { Text("Address") },
                     modifier = Modifier.fillMaxWidth()
                 )
-                OutlinedTextField(
-                    value = imageUrl,
-                    onValueChange = { imageUrl = it },
-                    label = { Text("Image URL") },
-                    modifier = Modifier.fillMaxWidth()
-                )
+
+                // ✅ שני כפתורים סימטריים עם משקל שווה
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = { galleryLauncher.launch("image/*") },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Choose from Gallery")
+                    }
+                    Button(
+                        onClick = { cameraLauncher.launch(null) },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Take Photo")
+                    }
+                }
+
+                selectedImageUri?.let {
+                    Image(
+                        painter = rememberAsyncImagePainter(it),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(150.dp),
+                        contentScale = ContentScale.Crop
+                    )
+                }
             }
         },
         confirmButton = {
@@ -234,7 +269,7 @@ fun AddReviewDialog(
                     rating = rating,
                     comment = comment,
                     address = address,
-                    imagePath = imageUrl
+                    imagePath = selectedImageUri?.toString()
                 )
                 onSave(review)
             }) { Text("Save") }
