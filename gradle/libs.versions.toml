@@ -28,6 +28,7 @@ uiToolingPreview = "1.7.7"
 lifecycleViewmodelDesktop = "2.9.2"
 roomCommonJvm = "2.7.2"
 firebaseCrashlyticsBuildtools = "3.0.6"
+navigationCompose = "2.9.3"
 
 [libraries]
 androidx-foundation = { module = "androidx.compose.foundation:foundation", version.ref = "foundation" }
@@ -60,7 +61,8 @@ ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "kto
 ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktorClientCore" }
 maps-compose = { module = "com.google.maps.android:maps-compose", version.ref = "mapsCompose" }
 play-services-maps = { module = "com.google.android.gms:play-services-maps", version.ref = "playServicesMaps" }
-firebase-bom = { module = "com.google.firebase:firebase-bom", version = "33.7.0" } # או הגרסה הכי עדכנית
+firebase-bom = { module = "com.google.firebase:firebase-bom", version = "33.7.0" }
+androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" } # או הגרסה הכי עדכנית
 
 
 [plugins]

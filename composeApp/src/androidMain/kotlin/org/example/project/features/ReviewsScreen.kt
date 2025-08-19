@@ -1,6 +1,7 @@
 package org.example.project.features
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -14,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -26,12 +28,17 @@ import org.example.project.model.Reviews
 
 @Composable
 fun ReviewsScreen(
-    viewModel: ReviewsViewModel
+    viewModel: ReviewsViewModel = ReviewsViewModel(), // או להזריק דרך DI
+    onNavigateToDetails: (String) -> Unit = {}        // <-- ניווט לפרטים
 ) {
     val uiState = viewModel.uiState.collectAsState().value
     when (uiState) {
         is ReviewsState.Error -> ErrorContent(message = uiState.errorMessage)
-        is ReviewsState.Loaded -> ReviewsContent(uiState.reviews, viewModel)
+        is ReviewsState.Loaded -> ReviewsContent(
+            reviews = uiState.reviews,
+            viewModel = viewModel,
+            onNavigateToDetails = onNavigateToDetails // <-- מעבירים הלאה
+        )
         ReviewsState.Loading -> LoadingContent()
     }
 }
@@ -40,6 +47,7 @@ fun ReviewsScreen(
 fun ReviewsContent(
     reviews: Reviews,
     viewModel: ReviewsViewModel,
+    onNavigateToDetails: (String) -> Unit,           // <-- מתקבל פה
     lazyListState: LazyListState = rememberLazyListState()
 ) {
     var searchQuery by remember { mutableStateOf("") }
@@ -50,9 +58,9 @@ fun ReviewsContent(
             reviews.items
         } else {
             reviews.items.filter { review ->
-                review.restaurantName?.contains(searchQuery, ignoreCase = true) == true ||
-                        review.comment?.contains(searchQuery, ignoreCase = true) == true ||
-                        review.address?.contains(searchQuery, ignoreCase = true) == true
+                (review.restaurantName?.contains(searchQuery, ignoreCase = true) == true) ||
+                        (review.comment?.contains(searchQuery, ignoreCase = true) == true) ||
+                        (review.address?.contains(searchQuery, ignoreCase = true) == true)
             }
         }
     }
@@ -86,8 +94,11 @@ fun ReviewsContent(
             contentPadding = PaddingValues(8.dp),
             modifier = Modifier.fillMaxSize()
         ) {
-            items(filteredReviews) { review ->
-                ReviewContent(review)
+            items(filteredReviews, key = { it.id }) { review ->
+                ReviewRowCard(
+                    review = review,
+                    onClick = { onNavigateToDetails(review.id) } // <-- הניווט מתבצע כאן
+                )
             }
         }
     }
@@ -96,7 +107,7 @@ fun ReviewsContent(
         AddReviewDialog(
             onDismiss = { showDialog = false },
             onSave = { newReview ->
-                viewModel.addReview(newReview)   // ✅ שמירה בפיירבייס
+                viewModel.addReview(newReview)   // שמירה בפיירבייס
                 showDialog = false
             }
         )
@@ -104,44 +115,56 @@ fun ReviewsContent(
 }
 
 @Composable
-fun ReviewContent(
+private fun ReviewRowCard(
     review: Review,
+    onClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(8.dp),
+            .padding(8.dp)
+            .clickable(onClick = onClick),                  // <-- קליק על הכרטיס
         shape = RoundedCornerShape(8.dp),
         elevation = CardDefaults.elevatedCardElevation(2.dp)
     ) {
         Column(
             modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text(text = review.restaurantName ?: "", style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = review.restaurantName ?: "",
+                style = MaterialTheme.typography.titleMedium
+            )
 
-            // ⭐ כוכבים
+            // תמונה (אם יש)
+            if (!review.imagePath.isNullOrBlank()) {
+                Image(
+                    painter = rememberAsyncImagePainter(review.imagePath),
+                    contentDescription = "Review image",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(160.dp)
+                )
+            }
+
+            // ⭐ דירוג
             Row {
                 repeat(5) { index ->
                     Icon(
                         imageVector = Icons.Filled.Star,
                         contentDescription = null,
-                        tint = if (index < (review.rating ?: 0)) Color.Yellow else Color.Gray
+                        tint = if (index < (review.rating ?: 0)) Color(0xFFFFC107) else Color.Gray
                     )
                 }
             }
 
-            Text(text = review.comment ?: "")
-            Text(text = "📍 ${review.address ?: ""}", style = MaterialTheme.typography.bodySmall)
-
-            if (!review.imagePath.isNullOrBlank()) {
-                Image(
-                    painter = rememberAsyncImagePainter(review.imagePath),
-                    contentDescription = "Review image",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(120.dp)
-                )
+            // טקסטים
+            if (!review.comment.isNullOrBlank()) {
+                Text(text = review.comment!!)
+            }
+            if (!review.address.isNullOrBlank()) {
+                Text(text = "📍 ${review.address}", style = MaterialTheme.typography.bodySmall)
             }
         }
     }
@@ -156,7 +179,7 @@ fun AddReviewDialog(
     var rating by remember { mutableIntStateOf(0) }
     var comment by remember { mutableStateOf("") }
     var address by remember { mutableStateOf("") }
-    var imageUrl by remember { mutableStateOf("") } // כאן המשתמש יכניס קישור או אחרי העלאה ל-Firebase Storage
+    var imageUrl by remember { mutableStateOf("") } // יישאר imagePath במודל
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -169,43 +192,36 @@ fun AddReviewDialog(
                     label = { Text("Restaurant Name") },
                     modifier = Modifier.fillMaxWidth()
                 )
-
-                // ⭐ בורר כוכבים
                 Row {
                     repeat(5) { index ->
                         IconToggleButton(
                             checked = index < rating,
-                            onCheckedChange = {
-                                rating = index + 1
-                            }
+                            onCheckedChange = { rating = index + 1 }
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.Star,
                                 contentDescription = null,
-                                tint = if (index < rating) Color.Yellow else Color.Gray
+                                tint = if (index < rating) Color(0xFFFFC107) else Color.Gray
                             )
                         }
                     }
                 }
-
                 OutlinedTextField(
                     value = comment,
                     onValueChange = { comment = it },
                     label = { Text("Comment") },
                     modifier = Modifier.fillMaxWidth()
                 )
-
                 OutlinedTextField(
                     value = address,
                     onValueChange = { address = it },
                     label = { Text("Address") },
                     modifier = Modifier.fillMaxWidth()
                 )
-
                 OutlinedTextField(
                     value = imageUrl,
                     onValueChange = { imageUrl = it },
-                    label = { Text("Image URL") }, // בהמשך נחליף להעלאת קובץ ל-Storage
+                    label = { Text("Image URL") },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -221,40 +237,25 @@ fun AddReviewDialog(
                     imagePath = imageUrl
                 )
                 onSave(review)
-            }) {
-                Text("Save")
-            }
+            }) { Text("Save") }
         },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
 }
 
 @Composable
 fun ErrorContent(message: String) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Text(
             text = message,
-            style = TextStyle(
-                fontSize = 28.sp,
-                textAlign = TextAlign.Center
-            )
+            style = TextStyle(fontSize = 28.sp, textAlign = TextAlign.Center)
         )
     }
 }
 
 @Composable
 fun LoadingContent() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         CircularProgressIndicator(
             modifier = Modifier.width(64.dp),
             color = MaterialTheme.colorScheme.surfaceVariant,
