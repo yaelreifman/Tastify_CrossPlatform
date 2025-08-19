@@ -5,9 +5,9 @@ import org.jetbrains.kotlin.gradle.plugin.mpp.apple.XCFramework
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
-    id("co.touchlab.skie") version "0.10.1"
+    id("co.touchlab.skie") version "0.10.5"
     id("com.google.gms.google-services")
-    kotlin("plugin.serialization") version "2.1.0"
+    kotlin("plugin.serialization") version "2.1.21"
 
 
 }
@@ -20,18 +20,22 @@ kotlin {
         }
     }
 
+    val iosX64Target = iosX64()                 // אופציונלי (למק אינטל)
+    val iosArm64Target = iosArm64()
+    val iosSimArm64Target = iosSimulatorArm64()
+
+    // יצירת XCFramework בשם Shared
     val xcf = XCFramework("Shared")
 
     listOf(
-        iosX64(),
-        iosArm64(),
-        iosSimulatorArm64()
-
+        iosX64Target,
+        iosArm64Target,
+        iosSimArm64Target
     ).forEach { iosTarget ->
         iosTarget.binaries.framework {
             baseName = "Shared"
-           xcf.add(this)
             isStatic = true
+            xcf.add(this)
         }
     }
 
