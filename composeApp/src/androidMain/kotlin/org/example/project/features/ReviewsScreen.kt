@@ -24,6 +24,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
+import kotlinx.coroutines.launch
+import org.example.project.data.StorageRepository
 import org.example.project.features.Reviews.ReviewsState
 import org.example.project.features.Reviews.ReviewsViewModel
 import org.example.project.model.Review
@@ -180,14 +182,13 @@ fun AddReviewDialog(
     var comment by remember { mutableStateOf("") }
     var address by remember { mutableStateOf("") }
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    var uploading by remember { mutableStateOf(false) }
+
+    val scope = rememberCoroutineScope()
 
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? -> selectedImageUri = uri }
-
-    val cameraLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicturePreview()
-    ) { bitmap -> /* TODO: העלאה ל־Storage */ }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -230,23 +231,11 @@ fun AddReviewDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // ✅ שני כפתורים סימטריים עם משקל שווה
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                Button(
+                    onClick = { galleryLauncher.launch("image/*") },
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Button(
-                        onClick = { galleryLauncher.launch("image/*") },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Choose from Gallery")
-                    }
-                    Button(
-                        onClick = { cameraLauncher.launch(null) },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Take Photo")
-                    }
+                    Text("Choose Image")
                 }
 
                 selectedImageUri?.let {
@@ -259,19 +248,33 @@ fun AddReviewDialog(
                         contentScale = ContentScale.Crop
                     )
                 }
+
+                if (uploading) {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
             }
         },
         confirmButton = {
             TextButton(onClick = {
-                val review = Review(
-                    id = System.currentTimeMillis().toString(),
-                    restaurantName = restaurantName,
-                    rating = rating,
-                    comment = comment,
-                    address = address,
-                    imagePath = selectedImageUri?.toString()
-                )
-                onSave(review)
+                val id = System.currentTimeMillis().toString()
+                scope.launch {
+                    uploading = true
+                    var imageUrl: String? = null
+                    selectedImageUri?.let { uri ->
+                        imageUrl = StorageRepository.uploadImage(uri, id)
+                    }
+                    uploading = false
+
+                    val review = Review(
+                        id = id,
+                        restaurantName = restaurantName,
+                        rating = rating,
+                        comment = comment,
+                        address = address,
+                        imagePath = imageUrl // עכשיו URL אמיתי מה-Storage
+                    )
+                    onSave(review)
+                }
             }) { Text("Save") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
