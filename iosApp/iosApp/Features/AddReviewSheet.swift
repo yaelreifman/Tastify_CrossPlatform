@@ -2,7 +2,57 @@ import SwiftUI
 import PhotosUI
 import FirebaseStorage
 import Shared
+import Foundation
+import UIKit
 
+// MARK: - ISO8601 helper
+extension Date {
+    /// דוגמה: "2025-08-20T11:24:33.512Z"
+    var iso8601ZString: String {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        f.timeZone = TimeZone(secondsFromGMT: 0)
+        return f.string(from: self)
+    }
+}
+
+// MARK: - Camera Picker (UIKit wrapper)
+private struct CameraPicker: UIViewControllerRepresentable {
+    var onImage: (Data) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    final class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
+        let parent: CameraPicker
+        init(_ parent: CameraPicker) { self.parent = parent }
+
+        func imagePickerController(_ picker: UIImagePickerController,
+                                   didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+            let image = (info[.editedImage] ?? info[.originalImage]) as? UIImage
+            if let img = image, let data = img.jpegData(compressionQuality: 0.9) {
+                parent.onImage(data)
+            }
+            parent.dismiss()
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            parent.dismiss()
+        }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = .camera
+        picker.allowsEditing = false
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+}
+
+// MARK: - Add Review Sheet
 struct AddReviewSheet: View {
     @Environment(\.dismiss) private var dismiss
 
@@ -11,8 +61,15 @@ struct AddReviewSheet: View {
     @State private var comment = ""
     @State private var address = ""
 
+    // גלריה
     @State private var selectedItem: PhotosPickerItem?
     @State private var pickedImageData: Data?
+
+    // מצלמה
+    @State private var showCamera = false
+    @State private var showCameraUnavailableAlert = false
+
+    // העלאה
     @State private var uploading = false
 
     var onSave: (Shared.Review) -> Void
@@ -28,8 +85,9 @@ struct AddReviewSheet: View {
                     HStack {
                         ForEach(0..<5, id: \.self) { i in
                             Image(systemName: i < rating ? "star.fill" : "star")
-                                .foregroundStyle(.yellow)
-                                .onTapGesture { rating = i + 1 }
+                            .foregroundStyle(.yellow)
+                            .onTapGesture { rating = i + 1 }
+                            .accessibilityLabel(Text("Rate \(i + 1)"))
                         }
                     }
                 }
@@ -44,8 +102,20 @@ struct AddReviewSheet: View {
                 }
 
                 Section("Image") {
+                    // גלריה
                     PhotosPicker(selection: $selectedItem, matching: .images) {
                         Label("Choose from Photos", systemImage: "photo.on.rectangle")
+                    }
+
+                    // מצלמה
+                    Button {
+                        if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                            showCamera = true
+                        } else {
+                            showCameraUnavailableAlert = true
+                        }
+                    } label: {
+                        Label("Take Photo", systemImage: "camera")
                     }
 
                     if let data = pickedImageData, let img = UIImage(data: data) {
@@ -54,6 +124,10 @@ struct AddReviewSheet: View {
                             .scaledToFit()
                             .frame(height: 150)
                             .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(.black.opacity(0.08), lineWidth: 0.5)
+                            }
                     }
 
                     if uploading {
@@ -72,6 +146,7 @@ struct AddReviewSheet: View {
                 }
             }
         }
+            // גלריה → המרת הפריט ל־Data
         .onChange(of: selectedItem) { _, newItem in
             Task {
                 if let data = try? await newItem?.loadTransferable(type: Data.self) {
@@ -79,36 +154,44 @@ struct AddReviewSheet: View {
                 }
             }
         }
+        // מצלמה
+        .sheet(isPresented: $showCamera) {
+            CameraPicker { data in
+                self.pickedImageData = data
+            }
+        }
+        .alert("Camera Unavailable",
+               isPresented: $showCameraUnavailableAlert,
+               actions: { Button("OK", role: .cancel) {} },
+               message: { Text("Camera is not available on this device/simulator.") })
     }
 
+    // MARK: - Actions
     private func save() {
         let id = UUID().uuidString
-        let nowMillis = Int64(Date().timeIntervalSince1970 * 1000)
-
+        let nowIso = Date().iso8601ZString
         uploading = true
 
-        // נעלה תמונה אם קיימת, נקבל URL, ואז נבנה Review עם טיפוסים נכונים
         uploadImageIfNeeded(data: pickedImageData, id: id) { urlString in
-            // slug בסיסי ל-restaurantId (אם השם ריק, נשתמש ב-id)
             let trimmedName = restaurantName.trimmingCharacters(in: .whitespacesAndNewlines)
             let slug = trimmedName.isEmpty
                 ? id
                 : trimmedName
-                    .lowercased()
-                    .replacingOccurrences(of: "\\s+", with: "-", options: .regularExpression)
+                .lowercased()
+                .replacingOccurrences(of: "\\s+", with: "-", options: .regularExpression)
 
             let review = Shared.Review(
                 id: id,
-                restaurantId: slug,                       // ← חובה String, לא nil
-                rating: Int32(rating),                    // אם הקומפיילר מתעקש: rating: rating
-                comment: comment,                         // ← חובה String, לא nil
-                imagePath: urlString,                     // אופציונלי: String?
-                restaurantName: restaurantName,           // חובה String
-                address: address,                         // אם אופציונלי, מותר להעביר String רגיל
-                latitude: nil,                            // אופציונלי
-                longitude: nil,                           // אופציונלי
-                placeId: nil,                             // אופציונלי
-                createdAt: String(nowMillis)              // ← חובה String (לא Int64)
+                restaurantId: slug,                    // String (חובה)
+                rating: Int32(rating),                 // Int32
+                comment: comment,                      // String (חובה)
+                imagePath: urlString,                  // String? (אופציונלי)
+                restaurantName: restaurantName,        // String
+                address: address,                      // String (מותר ריק)
+                latitude: nil,
+                longitude: nil,
+                placeId: nil,
+                createdAt: nowIso                      // String ISO-8601
             )
 
             uploading = false
@@ -116,7 +199,6 @@ struct AddReviewSheet: View {
             dismiss()
         }
     }
-
 
     private func uploadImageIfNeeded(data: Data?, id: String, completion: @escaping (String?) -> Void) {
         guard let data else { completion(nil); return }
