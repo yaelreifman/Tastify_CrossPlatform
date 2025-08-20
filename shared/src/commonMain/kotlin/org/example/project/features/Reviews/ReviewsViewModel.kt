@@ -15,6 +15,8 @@ import org.example.project.model.Review
 import org.example.project.data.ReviewsRepository
 import org.example.project.data.FirebaseReviewsRepository
 import org.example.project.data.GeocodingRepository
+import kotlinx.datetime.Clock // ← חדש: לשימוש ב-ISO8601 UTC
+
 
 class ReviewsViewModel(
     private val repo: ReviewsRepository = FirebaseReviewsRepository()
@@ -37,7 +39,6 @@ class ReviewsViewModel(
                     _uiState.value = ReviewsState.Error(e.message ?: "Unknown error")
                 }
                 .collectLatest { reviews ->
-                    // ✅ רק מה שמגיע מה־Firestore (עם latitude/longitude אם קיימים)
                     _uiState.value = ReviewsState.Loaded(reviews)
                 }
         }
@@ -48,26 +49,32 @@ class ReviewsViewModel(
             try {
                 var enrichedReview = review
 
-                // ✅ אם יש כתובת ואין קואורדינטות – מבצעים Geocoding לפני שמירה
-                if (!review.address.isNullOrBlank() && review.latitude == null) {
+                // אם חסר createdAt – נמלא עכשיו (ISO-8601 UTC)
+                if (enrichedReview.createdAt.isNullOrBlank()) {
+                    val nowIso = Clock.System.now().toString() // "2025-08-20T11:24:33.512Z"
+                    enrichedReview = enrichedReview.copy(createdAt = nowIso)
+                }
+
+                // אם יש כתובת ואין קואורדינטות – ג׳יאוקודינג לפני שמירה
+                if (!enrichedReview.address.isNullOrBlank() && enrichedReview.latitude == null) {
                     val coords = withContext(Dispatchers.IO) {
                         try {
-                            GeocodingRepository.getCoordinatesFromAddress(review.address!!)
+                            GeocodingRepository.getCoordinatesFromAddress(enrichedReview.address!!)
                         } catch (e: Exception) {
                             e.printStackTrace()
                             null
                         }
                     }
 
-                    coords?.let {
+                    coords?.let { (lat, lng) ->
                         enrichedReview = enrichedReview.copy(
-                            latitude = it.first,
-                            longitude = it.second
+                            latitude = lat,
+                            longitude = lng
                         )
                     }
                 }
 
-                // ✅ נשמר ל־Firestore עם קואורדינטות אם הצלחנו להשיג
+                // שמירה ל-Firestore
                 repo.addReview(enrichedReview)
 
             } catch (e: Exception) {

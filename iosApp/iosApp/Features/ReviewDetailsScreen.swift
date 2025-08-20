@@ -1,11 +1,9 @@
-// DetailsScreen.swift
 import SwiftUI
 import Shared
 import CoreLocation
 
 struct DetailsScreen: View {
     let review: Shared.Review
-
     @State private var coord: CLLocationCoordinate2D?
 
     var body: some View {
@@ -24,18 +22,14 @@ struct DetailsScreen: View {
                             .font(.title2).bold()
                             .lineLimit(1)
                         Spacer(minLength: 12)
-                        Text(review.createdAtDate, style: .date)
+                        Text(review.createdAtDateSafe, style: .date)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
 
-                    // ⭐️ שורת כוכבים
                     if review.ratingInt > 0 {
-                        HStack(spacing: 2) {
-                            ForEach(0..<min(review.ratingInt, 5), id: \.self) { _ in
-                                Image(systemName: "star.fill")
-                            }
-                        }
+                        HStack(spacing: 2) { ForEach(0..<min(review.ratingInt, 5), id: \.self) { _ in
+                            Image(systemName: "star.fill") } }
                         .font(.caption)
                         .foregroundStyle(.yellow)
                     }
@@ -50,8 +44,7 @@ struct DetailsScreen: View {
                     }
 
                     if !review.comment.isEmpty {
-                        Text(review.comment)
-                            .font(.body)
+                        Text(review.comment).font(.body)
                     }
                 }
                 .padding(.horizontal)
@@ -73,27 +66,20 @@ struct DetailsScreen: View {
         }
         .navigationTitle("Review")
         .navigationBarTitleDisplayMode(.inline)
-        .task {
-            await resolveCoordinateIfNeeded()
-        }
+        .task { await resolveCoordinateIfNeeded() }
     }
 
-    // אם אין lat/lng – ננסה להשיג:
-    // 1) אם ה-VM שלך "מעשיר" כבר ב-shared, לרוב זה יספיק.
-    // 2) אחרת—fallback: גאוקודינג לפי כתובת דרך GeocodingRepository.
+    // אם אין lat/lng – ננסה להשיג מצד ה-shared (GeocodingRepository)
     @MainActor
     private func resolveCoordinateIfNeeded() async {
-        if let lat = review.latitude?.doubleValue,
-           let lng = review.longitude?.doubleValue {
+        if let lat = review.latitude?.doubleValue, let lng = review.longitude?.doubleValue {
             coord = CLLocationCoordinate2D(latitude: lat, longitude: lng)
             return
         }
         guard !review.addressSafe.isEmpty else { return }
 
         do {
-            if let pair = try await Shared.GeocodingRepository.shared
-                .getCoordinatesFromAddress(address: review.addressSafe)
-            {
+            if let pair = try await Shared.GeocodingRepository.shared.getCoordinatesFromAddress(address: review.addressSafe) {
                 let lat: Double? = (pair.first as? NSNumber)?.doubleValue ?? (pair.first as? Double)
                 let lng: Double? = (pair.second as? NSNumber)?.doubleValue ?? (pair.second as? Double)
                 if let lat, let lng {
@@ -103,14 +89,12 @@ struct DetailsScreen: View {
                 }
             }
         } catch {
-            // אם יש fallback בצד ה-shared (ת״א), ייתכן שתחזרי לשם.
             print("Geocoding failed:", error.localizedDescription)
         }
     }
 }
 
-// MARK: - Header Image עם שימר ובדג'
-
+// MARK: - Header Image עם שימר
 private struct HeaderImage: View {
     let imagePath: String?
     let rating: Int
@@ -121,22 +105,16 @@ private struct HeaderImage: View {
                 AsyncImage(url: url) { phase in
                     switch phase {
                     case .empty:
-                        RoundedRectangle(cornerRadius: 18)
-                            .fill(Color.gray.opacity(0.12))
-                            .localShimmer()
+                        RoundedRectangle(cornerRadius: 18).fill(Color.gray.opacity(0.12)).localShimmer()
                     case .success(let image):
                         image.resizable().scaledToFill()
                     case .failure:
                         ZStack {
-                            RoundedRectangle(cornerRadius: 18)
-                                .fill(Color.gray.opacity(0.12))
-                            Image(systemName: "photo")
-                                .font(.title2)
-                                .foregroundStyle(.gray.opacity(0.6))
+                            RoundedRectangle(cornerRadius: 18).fill(Color.gray.opacity(0.12))
+                            Image(systemName: "photo").font(.title2).foregroundStyle(.gray.opacity(0.6))
                         }
                     @unknown default:
-                        RoundedRectangle(cornerRadius: 18)
-                            .fill(Color.gray.opacity(0.12))
+                        RoundedRectangle(cornerRadius: 18).fill(Color.gray.opacity(0.12))
                     }
                 }
                 .overlay(LinearGradient(
@@ -145,19 +123,15 @@ private struct HeaderImage: View {
                 ))
             } else {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 18)
-                        .fill(Color.gray.opacity(0.12))
-                    Image(systemName: "photo")
-                        .font(.title2)
-                        .foregroundStyle(.gray.opacity(0.6))
+                    RoundedRectangle(cornerRadius: 18).fill(Color.gray.opacity(0.12))
+                    Image(systemName: "photo").font(.title2).foregroundStyle(.gray.opacity(0.6))
                 }
             }
 
             if rating > 0 {
                 HStack(spacing: 6) {
                     Image(systemName: "star.fill")
-                    Text("\(rating)")
-                        .fontWeight(.semibold)
+                    Text("\(rating)").fontWeight(.semibold)
                 }
                 .font(.caption)
                 .padding(.horizontal, 10)
@@ -171,40 +145,23 @@ private struct HeaderImage: View {
     }
 }
 
-// MARK: - הרחבות עזר למודל
 
-private extension Shared.Review {
-    var ratingInt: Int { Int(self.rating ?? 0) }
-    var createdAtMillis: Int64 { Int64(self.createdAt) ?? 0 }
-    var createdAtDate: Date {
-        Date(timeIntervalSince1970: TimeInterval(createdAtMillis) / 1000.0)
-    }
-    var addressSafe: String { self.address ?? "" }
-}
-
-// MARK: - שימר מקומי (כדי לא להתנגש עם מה שב-ReviewsScreen)
-
+// MARK: - שימר מקומי
 private struct LocalShimmerModifier: ViewModifier {
     @State private var phase: CGFloat = -1.0
     func body(content: Content) -> some View {
-        content
-            .overlay(
+        content.overlay(
                 LinearGradient(
                     gradient: Gradient(colors: [.clear, .white.opacity(0.35), .clear]),
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
+                    startPoint: .topLeading, endPoint: .bottomTrailing
                 )
                     .rotationEffect(.degrees(20))
                     .offset(x: phase * 220, y: phase * 220)
                     .blendMode(.plusLighter)
             )
             .onAppear {
-                withAnimation(.linear(duration: 1.25).repeatForever(autoreverses: false)) {
-                    phase = 1.0
-                }
+                withAnimation(.linear(duration: 1.25).repeatForever(autoreverses: false)) { phase = 1.0 }
             }
     }
 }
-private extension View {
-    func localShimmer() -> some View { modifier(LocalShimmerModifier()) }
-}
+private extension View { func localShimmer() -> some View { modifier(LocalShimmerModifier()) } }

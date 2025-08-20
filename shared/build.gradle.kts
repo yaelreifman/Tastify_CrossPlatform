@@ -54,6 +54,7 @@ kotlin {
             implementation("dev.gitlive:firebase-firestore:2.1.0")
             implementation("dev.gitlive:firebase-common:2.1.0")
             implementation("dev.gitlive:firebase-auth:2.1.0")
+            implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.0")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

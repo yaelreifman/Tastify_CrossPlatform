@@ -5,9 +5,8 @@ import Shared
 import Foundation
 import UIKit
 
-// MARK: - ISO8601 helper
+// ISO-8601 עם שבריות שניות ו-Z (UTC)
 extension Date {
-    /// דוגמה: "2025-08-20T11:24:33.512Z"
     var iso8601ZString: String {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -16,7 +15,7 @@ extension Date {
     }
 }
 
-// MARK: - Camera Picker (UIKit wrapper)
+// עטיפה ל-Camera (UIKit)
 private struct CameraPicker: UIViewControllerRepresentable {
     var onImage: (Data) -> Void
     @Environment(\.dismiss) private var dismiss
@@ -34,13 +33,10 @@ private struct CameraPicker: UIViewControllerRepresentable {
             parent.dismiss()
         }
 
-        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            parent.dismiss()
-        }
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) { parent.dismiss() }
     }
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
-
     func makeUIViewController(context: Context) -> UIImagePickerController {
         let picker = UIImagePickerController()
         picker.sourceType = .camera
@@ -48,11 +44,9 @@ private struct CameraPicker: UIViewControllerRepresentable {
         picker.delegate = context.coordinator
         return picker
     }
-
     func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
 }
 
-// MARK: - Add Review Sheet
 struct AddReviewSheet: View {
     @Environment(\.dismiss) private var dismiss
 
@@ -80,33 +74,26 @@ struct AddReviewSheet: View {
                 Section("Restaurant") {
                     TextField("Restaurant Name", text: $restaurantName)
                 }
-
                 Section("Rating") {
                     HStack {
                         ForEach(0..<5, id: \.self) { i in
                             Image(systemName: i < rating ? "star.fill" : "star")
-                            .foregroundStyle(.yellow)
-                            .onTapGesture { rating = i + 1 }
-                            .accessibilityLabel(Text("Rate \(i + 1)"))
+                                .foregroundStyle(.yellow)
+                                .onTapGesture { rating = i + 1 }
                         }
                     }
                 }
-
                 Section("Comment") {
-                    TextField("Comment", text: $comment, axis: .vertical)
-                        .lineLimit(3...6)
+                    TextField("Comment", text: $comment, axis: .vertical).lineLimit(3...6)
                 }
-
                 Section("Address") {
                     TextField("Address", text: $address)
                 }
-
                 Section("Image") {
                     // גלריה
                     PhotosPicker(selection: $selectedItem, matching: .images) {
                         Label("Choose from Photos", systemImage: "photo.on.rectangle")
                     }
-
                     // מצלמה
                     Button {
                         if UIImagePickerController.isSourceTypeAvailable(.camera) {
@@ -114,39 +101,28 @@ struct AddReviewSheet: View {
                         } else {
                             showCameraUnavailableAlert = true
                         }
-                    } label: {
-                        Label("Take Photo", systemImage: "camera")
-                    }
+                    } label: { Label("Take Photo", systemImage: "camera") }
 
                     if let data = pickedImageData, let img = UIImage(data: data) {
                         Image(uiImage: img)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(height: 150)
+                            .resizable().scaledToFit().frame(height: 150)
                             .clipShape(RoundedRectangle(cornerRadius: 8))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(.black.opacity(0.08), lineWidth: 0.5)
-                            }
+                            .overlay { RoundedRectangle(cornerRadius: 8).stroke(.black.opacity(0.08), lineWidth: 0.5) }
                     }
 
-                    if uploading {
-                        ProgressView("Uploading…")
-                    }
+                    if uploading { ProgressView("Uploading…") }
                 }
             }
             .navigationTitle("Add Review")
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { save() }
                     .disabled(restaurantName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || uploading)
                 }
             }
         }
-            // גלריה → המרת הפריט ל־Data
+            // המרה של פריט גלריה ל-Data
         .onChange(of: selectedItem) { _, newItem in
             Task {
                 if let data = try? await newItem?.loadTransferable(type: Data.self) {
@@ -155,11 +131,7 @@ struct AddReviewSheet: View {
             }
         }
         // מצלמה
-        .sheet(isPresented: $showCamera) {
-            CameraPicker { data in
-                self.pickedImageData = data
-            }
-        }
+        .sheet(isPresented: $showCamera) { CameraPicker { data in self.pickedImageData = data } }
         .alert("Camera Unavailable",
                isPresented: $showCameraUnavailableAlert,
                actions: { Button("OK", role: .cancel) {} },
@@ -176,22 +148,21 @@ struct AddReviewSheet: View {
             let trimmedName = restaurantName.trimmingCharacters(in: .whitespacesAndNewlines)
             let slug = trimmedName.isEmpty
                 ? id
-                : trimmedName
-                .lowercased()
+                : trimmedName.lowercased()
                 .replacingOccurrences(of: "\\s+", with: "-", options: .regularExpression)
 
             let review = Shared.Review(
                 id: id,
-                restaurantId: slug,                    // String (חובה)
-                rating: Int32(rating),                 // Int32
-                comment: comment,                      // String (חובה)
-                imagePath: urlString,                  // String? (אופציונלי)
-                restaurantName: restaurantName,        // String
-                address: address,                      // String (מותר ריק)
+                restaurantId: slug,            // חובה String
+                rating: Int32(rating),         // Int32
+                comment: comment,              // חובה String
+                imagePath: urlString,          // String?
+                restaurantName: restaurantName,
+                address: address,              // אפשר ריק
                 latitude: nil,
                 longitude: nil,
                 placeId: nil,
-                createdAt: nowIso                      // String ISO-8601
+                createdAt: nowIso              // String ISO-8601
             )
 
             uploading = false
