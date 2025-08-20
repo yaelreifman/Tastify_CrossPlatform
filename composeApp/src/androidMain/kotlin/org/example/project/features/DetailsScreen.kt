@@ -37,7 +37,6 @@ fun DetailsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    // חפשי את הביקורת לפי ה-id מהסטייט
     val review: Review? = when (val s = uiState) {
         is ReviewsState.Loaded -> s.reviews.items.firstOrNull { it.id == id }
         else -> null
@@ -80,13 +79,12 @@ fun DetailsScreen(
         }
     }
 }
-
 @Composable
 private fun ReviewDetailsContent(review: Review) {
     var coordinates by remember { mutableStateOf<Pair<Double, Double>?>(null) }
     val scope = rememberCoroutineScope()
 
-    // אם אין קואורדינטות אבל יש כתובת -> נבצע Geocoding
+    // ✅ נביא קואורדינטות אם חסרות
     LaunchedEffect(review.address) {
         if (review.latitude == null && review.longitude == null && !review.address.isNullOrBlank()) {
             scope.launch {
@@ -147,8 +145,10 @@ private fun ReviewDetailsContent(review: Review) {
             }
         }
 
-        // מפה אם יש קואורדינטות
-        coordinates?.let { (lat, lng) ->
+        // ✅ מפה אם יש קואורדינטות
+        val lat = coordinates?.first ?: review.latitude
+        val lng = coordinates?.second ?: review.longitude
+        if (lat != null && lng != null) {
             val pos = LatLng(lat, lng)
             val cameraPositionState = rememberCameraPositionState {
                 position = CameraPosition.fromLatLngZoom(pos, 15f)

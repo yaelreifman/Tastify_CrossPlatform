@@ -37,7 +37,7 @@ class ReviewsViewModel(
                     _uiState.value = ReviewsState.Error(e.message ?: "Unknown error")
                 }
                 .collectLatest { reviews ->
-                    // ❌ לא עושים Geocoding כאן – רק מציגים את מה שיש
+                    // ✅ רק מה שמגיע מה־Firestore (עם latitude/longitude אם קיימים)
                     _uiState.value = ReviewsState.Loaded(reviews)
                 }
         }
@@ -47,21 +47,29 @@ class ReviewsViewModel(
         scope.launch {
             try {
                 var enrichedReview = review
+
+                // ✅ אם יש כתובת ואין קואורדינטות – מבצעים Geocoding לפני שמירה
                 if (!review.address.isNullOrBlank() && review.latitude == null) {
-                    withContext(Dispatchers.IO) {
+                    val coords = withContext(Dispatchers.IO) {
                         try {
-                            GeocodingRepository.getCoordinatesFromAddress(review.address!!)?.let { coords ->
-                                enrichedReview = review.copy(
-                                    latitude = coords.first,
-                                    longitude = coords.second
-                                )
-                            }
+                            GeocodingRepository.getCoordinatesFromAddress(review.address!!)
                         } catch (e: Exception) {
                             e.printStackTrace()
+                            null
                         }
                     }
+
+                    coords?.let {
+                        enrichedReview = enrichedReview.copy(
+                            latitude = it.first,
+                            longitude = it.second
+                        )
+                    }
                 }
-                repo.addReview(enrichedReview) // ✅ נשמר ל־Firestore עם קואורדינטות
+
+                // ✅ נשמר ל־Firestore עם קואורדינטות אם הצלחנו להשיג
+                repo.addReview(enrichedReview)
+
             } catch (e: Exception) {
                 e.printStackTrace()
                 _uiState.value = ReviewsState.Error("Failed to add review: ${e.message}")

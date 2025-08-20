@@ -30,7 +30,6 @@ object GeocodingRepository {
     suspend fun getCoordinatesFromAddress(address: String): Pair<Double, Double>? =
         withContext(Dispatchers.IO) {
             try {
-                // 🕐 Timeout ל-5 שניות
                 withTimeout(5000) {
                     val response: GeocodingResponse = client.get(BASE_URL) {
                         parameter("address", address)
@@ -49,7 +48,6 @@ object GeocodingRepository {
             } catch (e: Exception) {
                 e.printStackTrace()
                 println("❌ Geocoding exception: ${e.message}")
-                // 🟢 Fallback לתל אביב
                 Pair(32.0853, 34.7818)
             }
         }
