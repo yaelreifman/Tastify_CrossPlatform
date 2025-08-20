@@ -29,10 +29,12 @@ class FirebaseReviewsRepository : ReviewsRepository {
                     address = doc.get("address") as? String ?: "",
                     imagePath = doc.get("imagePath") as? String ?: "",
                     latitude = (doc.get("latitude") as? Double),
-                    longitude = (doc.get("longitude") as? Double)
+                    longitude = (doc.get("longitude") as? Double),
+                    createdAt = doc.get("createdAt")as? String ?: ""
+
                 )
             }
-            Reviews(items.sortedByDescending { it.id })
+            Reviews(items.sortedByDescending { it.createdAt })
         }
     }
 
@@ -44,7 +46,8 @@ class FirebaseReviewsRepository : ReviewsRepository {
             "address" to review.address,
             "imagePath" to review.imagePath,
             "latitude" to review.latitude,   // ✅ תמיד נשלח, גם אם null
-            "longitude" to review.longitude  // ✅ תמיד נשלח, גם אם null
+            "longitude" to review.longitude, // ✅ תמיד נשלח, גם אם null
+            "createdAt" to review.createdAt
         )
         collection.add(data)
     }

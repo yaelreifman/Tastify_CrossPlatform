@@ -54,6 +54,7 @@ struct AddReviewSheet: View {
     @State private var rating = 0
     @State private var comment = ""
     @State private var address = ""
+    @State private var createdAt = ""
 
     // גלריה
     @State private var selectedItem: PhotosPickerItem?

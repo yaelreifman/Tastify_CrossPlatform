@@ -36,7 +36,7 @@ struct ReviewsScreen: View {
 
         ZStack {
             content()
-            .navigationTitle("Reviews")
+            .navigationTitle("Tastify")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button { showAddSheet = true } label: {
