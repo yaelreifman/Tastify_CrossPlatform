@@ -1,33 +1,37 @@
 import SwiftUI
+import FirebaseCore
+import FirebaseAuth
 import GoogleMaps
 import GooglePlaces
-import FirebaseCore
 import Shared
-
 
 @main
 struct iOSApp: App {
-    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    @StateObject private var reviewsWrapper: ReviewsVMiOS
 
-    
-    
+    init() {
+        FirebaseApp.configure()
+        Auth.auth().signInAnonymously { result, error in
+            if let error = error { print("Auth error:", error.localizedDescription) }
+        }
+
+        // אם את משתמשת במפות של Google
+        GMSServices.provideAPIKey("YOUR_MAPS_KEY")
+        GMSPlacesClient.provideAPIKey("YOUR_PLACES_KEY")
+
+        let vm = ReviewsViewModel(
+            repo: FirebaseReviewsRepository(),
+            enrichLocation: EnrichReviewLocationUseCase(dataSource: DummyRestaurantLocationDataSource())
+        )
+        _reviewsWrapper = StateObject(wrappedValue: ReviewsVMiOS(vm: vm))
+    }
+
     var body: some Scene {
         WindowGroup {
             NavigationStack {
                 ReviewsScreen()
+                    .environmentObject(reviewsWrapper)
             }
         }
-    }
-}
-
-final class AppDelegate: NSObject, UIApplicationDelegate {
-    func application(
-        _ application: UIApplication,
-        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil
-    ) -> Bool {
-        FirebaseApp.configure()
-        GMSServices.provideAPIKey("AIzaSyBQZU4_AGMRIvFf-B5Jo2QxVkqt2v8749E")
-        GMSPlacesClient.provideAPIKey("AIzaSyBQZU4_AGMRIvFf-B5Jo2QxVkqt2v8749E")
-        return true
     }
 }

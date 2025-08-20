@@ -1,4 +1,3 @@
-
 import Foundation
 import Shared
 
@@ -17,7 +16,7 @@ final class ReviewsVMiOS: ObservableObject {
         }
     }
 
-    func addReview(_ review: Review) {
+    func addReview(_ review: Shared.Review) {
         vm.addReview(review: review)
     }
 }

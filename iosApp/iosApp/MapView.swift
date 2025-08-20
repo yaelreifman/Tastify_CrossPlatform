@@ -1,34 +1,37 @@
-//
-//  MapView.swift
-//  iosApp
-//
-//  Created by sharon bronshteyn on 19/08/2025.
-//
-
 import SwiftUI
-import CoreLocation
 import GoogleMaps
+import CoreLocation
 
 struct GoogleMapView: UIViewRepresentable {
-    let coordinate: CLLocationCoordinate2D
-    var title: String? = nil
+    var coordinate: CLLocationCoordinate2D
     var zoom: Float = 15
+    var title: String? = nil
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
 
     func makeUIView(context: Context) -> GMSMapView {
         let camera = GMSCameraPosition.camera(withLatitude: coordinate.latitude,
                                               longitude: coordinate.longitude,
                                               zoom: zoom)
-        let mapView = GMSMapView(frame: .zero, camera: camera)
-
-        // מרקר
-        let marker = GMSMarker(position: coordinate)
-        marker.title = title
-        marker.map = mapView
-
-        return mapView
+        let map = GMSMapView(frame: .zero, camera: camera)
+        map.settings.compassButton = true
+        context.coordinator.marker.position = coordinate
+        context.coordinator.marker.title = title
+        context.coordinator.marker.map = map
+        return map
     }
 
-    func updateUIView(_ mapView: GMSMapView, context: Context) {
-        // אפשר לעדכן כאן אם הקואורדינטות משתנות
+    func updateUIView(_ map: GMSMapView, context: Context) {
+        let camera = GMSCameraPosition.camera(withLatitude: coordinate.latitude,
+                                              longitude: coordinate.longitude,
+                                              zoom: zoom)
+        map.animate(to: camera)
+        context.coordinator.marker.position = coordinate
+        context.coordinator.marker.title = title
+        context.coordinator.marker.map = map
+    }
+
+    final class Coordinator {
+        let marker = GMSMarker()
     }
 }
