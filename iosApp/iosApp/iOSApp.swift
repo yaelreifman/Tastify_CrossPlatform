@@ -18,19 +18,9 @@ struct iOSApp: App {
         Auth.auth().signInAnonymously { _, _ in }
 
         // Google Maps/Places — החליפי במפתחות שלך
-        GMSServices.provideAPIKey("YOUR_GOOGLE_MAPS_KEY")
-        GMSPlacesClient.provideAPIKey("YOUR_GOOGLE_PLACES_KEY")
-        let vm = ReviewsViewModel(
-            repo: FirebaseReviewsRepository(),
-            enrichLocation: EnrichReviewLocationUseCase(dataSource: GeocodingLocationDataSource() )
-        )
-        // --- Build shared dependencies cleanly ---
-        let repo = FirebaseReviewsRepository()
-        let ds = DummyRestaurantLocationDataSource()                     // class → יש init()
-        let enrich = EnrichReviewLocationUseCase(dataSource: ds)         // label נכון: dataSource
-
-        // ⭐️ עיקר התיקון: label נכון ל־initializer של ה־VM
-       
+        GMSServices.provideAPIKey("AIzaSyC3FvmE6h_7Xea8pZMs46zxH1kcTfLn0lE")
+        GMSPlacesClient.provideAPIKey("AIzaSyC3FvmE6h_7Xea8pZMs46zxH1kcTfLn0lE")
+        let vm = ReviewsViewModel(repo: FirebaseReviewsRepository())
 
         // אם Xcode עדיין טוען "Extra argument 'enrichLocation' in call",
         // נסי במקום השורה למעלה את אחת משתי האופציות:

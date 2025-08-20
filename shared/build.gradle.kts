@@ -59,7 +59,8 @@ kotlin {
             implementation(libs.kotlin.test)
         }
         iosMain.dependencies {
-            implementation(libs.ktor.client.darwin) // iOS
+            implementation(libs.ktor.client.darwin) // iOz
+
 
         }
     }
