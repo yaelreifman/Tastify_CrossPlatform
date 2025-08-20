@@ -13,6 +13,7 @@
 		809FB5E22E54833E00D0DC90 /* GoogleMaps in Frameworks */ = {isa = PBXBuildFile; productRef = 809FB5E12E54833E00D0DC90 /* GoogleMaps */; };
 		809FB5E52E54838C00D0DC90 /* GooglePlaces in Frameworks */ = {isa = PBXBuildFile; productRef = 809FB5E42E54838C00D0DC90 /* GooglePlaces */; };
 		809FB5E72E54838C00D0DC90 /* GooglePlacesSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 809FB5E62E54838C00D0DC90 /* GooglePlacesSwift */; };
+		80F262C32E55B2D000B4AACC /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 80F262C22E55B2D000B4AACC /* FirebaseStorage */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -56,6 +57,7 @@
 				809FB5E52E54838C00D0DC90 /* GooglePlaces in Frameworks */,
 				809FB5E72E54838C00D0DC90 /* GooglePlacesSwift in Frameworks */,
 				80312BF62E54CF030063F96A /* FirebaseAuth in Frameworks */,
+				80F262C32E55B2D000B4AACC /* FirebaseStorage in Frameworks */,
 				80312BFA2E54CF030063F96A /* FirebaseFirestore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -114,6 +116,7 @@
 				80312BF52E54CF030063F96A /* FirebaseAuth */,
 				80312BF72E54CF030063F96A /* FirebaseCore */,
 				80312BF92E54CF030063F96A /* FirebaseFirestore */,
+				80F262C22E55B2D000B4AACC /* FirebaseStorage */,
 			);
 			productName = iosApp;
 			productReference = B9DA97B12DC1472C00A4DA20 /* TASTIFY_KMP.app */;
@@ -472,6 +475,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 809FB5E32E54838C00D0DC90 /* XCRemoteSwiftPackageReference "ios-places-sdk" */;
 			productName = GooglePlacesSwift;
+		};
+		80F262C22E55B2D000B4AACC /* FirebaseStorage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 809FB6012E54A6C800D0DC90 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseStorage;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -83,25 +83,32 @@ struct AddReviewSheet: View {
 
     private func save() {
         let id = UUID().uuidString
+        let nowMillis = Int64(Date().timeIntervalSince1970 * 1000)
+
         uploading = true
 
-        // 1) מעלים תמונה (אם יש), 2) משיגים URL להכניס ל-imagePath, 3) בונים Review בסדר פרמטרים נכון
+        // נעלה תמונה אם קיימת, נקבל URL, ואז נבנה Review עם טיפוסים נכונים
         uploadImageIfNeeded(data: pickedImageData, id: id) { urlString in
-            let now = Int64(Date().timeIntervalSince1970 * 1000)
+            // slug בסיסי ל-restaurantId (אם השם ריק, נשתמש ב-id)
+            let trimmedName = restaurantName.trimmingCharacters(in: .whitespacesAndNewlines)
+            let slug = trimmedName.isEmpty
+                ? id
+                : trimmedName
+                    .lowercased()
+                    .replacingOccurrences(of: "\\s+", with: "-", options: .regularExpression)
 
-            // שימי לב: סדר/שמות פרמטרים = בדיוק מה שהקומפיילר ביקש
             let review = Shared.Review(
                 id: id,
-                restaurantId: nil,                                  // אם יש לך מזהה מסעדה פנימי
-                rating: Int32(rating),                              // אם נופל, החליפי ל-Int(rating)
-                comment: comment.isEmpty ? nil : comment,
-                imagePath: urlString,
-                restaurantName: restaurantName,
-                address: address.isEmpty ? nil : address,
-                latitude: nil,
-                longitude: nil,
-                placeId: nil,                                       // אם משתמשת ב-Google Places
-                createdAt: now
+                restaurantId: slug,                       // ← חובה String, לא nil
+                rating: Int32(rating),                    // אם הקומפיילר מתעקש: rating: rating
+                comment: comment,                         // ← חובה String, לא nil
+                imagePath: urlString,                     // אופציונלי: String?
+                restaurantName: restaurantName,           // חובה String
+                address: address,                         // אם אופציונלי, מותר להעביר String רגיל
+                latitude: nil,                            // אופציונלי
+                longitude: nil,                           // אופציונלי
+                placeId: nil,                             // אופציונלי
+                createdAt: String(nowMillis)              // ← חובה String (לא Int64)
             )
 
             uploading = false
@@ -109,6 +116,7 @@ struct AddReviewSheet: View {
             dismiss()
         }
     }
+
 
     private func uploadImageIfNeeded(data: Data?, id: String, completion: @escaping (String?) -> Void) {
         guard let data else { completion(nil); return }
